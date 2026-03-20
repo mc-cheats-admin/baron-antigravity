@@ -27,7 +27,7 @@ def beacon():
         tasks[cid] = []
         db.set_state('tasks', tasks)
         
-    return jsonify({'tasks': pending})
+    return jsonify({'t': pending})
 
 @agent_bp.route('/result', methods=['POST'])
 def result():

