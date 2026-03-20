@@ -430,7 +430,7 @@ function setTheme(name) {
 async function doLogin() {
   const user = document.getElementById('u').value, pwd = document.getElementById('p').value;
   const res = await fetch('/api/panel/login', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:user, password:pwd})
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({login:user, password:pwd})
   }).then(r => r.json()).catch(() => null);
   if (res && res.token) {
     TOKEN = res.token; localStorage.setItem('bt', TOKEN);
