@@ -722,12 +722,22 @@ function clearBuildOut() {
   BUILD_DATA = null;
 }
 
-function downloadBuild() {
+async function downloadBuild() {
   if (!BUILD_DATA) return;
   if (BUILD_DATA.download_url) {
-    // Download compiled .exe
-    const a = document.createElement('a');
-    a.href = BUILD_DATA.download_url; a.download = (BUILD_DATA.name||'agent') + '.exe'; a.click();
+    // Download compiled .exe via fetch with auth token
+    try {
+      const resp = await fetch(BUILD_DATA.download_url, {
+        headers: {'X-Token': TOKEN}
+      });
+      if (!resp.ok) { alert('Download failed: ' + resp.status); return; }
+      const blob = await resp.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (BUILD_DATA.name||'agent') + '.exe';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch(e) { alert('Download error: ' + e); }
   } else {
     // Download .cs source
     const blob = new Blob([BUILD_DATA.source || ''], {type:'text/plain'});
