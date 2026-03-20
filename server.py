@@ -1675,7 +1675,7 @@ def generate_agent_source(bc):
         "\n"
         "        static Dictionary<string, string> ParseSimpleJson(string json) {\n"
         "            var dict = new Dictionary<string, string>();\n"
-        "            json = json.Trim().TrimStart('{').TrimEnd('}');\n"
+        "            json = json.Trim().TrimStart(new char[] { '{' }).TrimEnd(new char[] { '}' });\n"
         "            bool inString = false;\n"
         "            int kvStart = 0;\n"
         "            for (int i = 0; i <= json.Length; i++) {\n"

