@@ -1204,34 +1204,31 @@ def compile_agent(source, name, compiler):
     if 'mcs' in compiler:
         cmd = [
             compiler,
-            '-target:winexe',
+            '-target:exe',
             '-optimize+',
             f'-out:{exe_path}',
             '-r:System.dll',
-
             '-r:System.Net.Http.dll',
             '-r:System.Drawing.dll',
             '-r:System.Windows.Forms.dll',
             '-r:System.Management.dll',
             '-r:System.Security.dll',
-            '-r:Microsoft.VisualBasic.dll',
             '-warn:0',
+            '-nowarn:CS1701',
             source_path
         ]
     else:
         cmd = [
             compiler,
-            '/target:winexe',
+            '/target:exe',
             '/optimize+',
             f'/out:{exe_path}',
             '/r:System.dll',
-
             '/r:System.Net.Http.dll',
             '/r:System.Drawing.dll',
             '/r:System.Windows.Forms.dll',
             '/r:System.Management.dll',
             '/r:System.Security.dll',
-            '/r:Microsoft.VisualBasic.dll',
             '/warn:0',
             source_path
         ]
