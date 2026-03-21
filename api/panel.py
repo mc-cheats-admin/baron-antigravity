@@ -14,15 +14,47 @@ def login():
     password = data.get('password', '')
     ip = guard.get_client_ip()
 
-    if not guard.check_rate_limit(f"login:{ip}", max_req=10, window=60):
+    # 1. Check IP Ban
+    ban = guard.check_ban(ip)
+    if ban:
+        return jsonify({'ok': False, 'error': f'Banned: {ban.get("reason", "Policy violation")}'}), 403
+
+    # 2. Check IP Whitelist
+    if not guard.check_whitelist(ip):
+        guard.ban_ip(ip, duration_min=60, reason="Not in whitelist")
+        return jsonify({'ok': False, 'error': 'Access denied'}), 403
+
+    # 3. Check Honeypots
+    if guard.handle_honeypot(user, ip):
+        # Fake positive response but drop connection later or just block
+        return jsonify({'ok': False, 'error': 'Invalid credentials'}), 401
+
+    # 4. Rate Limiting
+    if not guard.check_rate_limit(f"login:{ip}", max_req=5, window=60):
         return jsonify({'ok': False, 'error': 'Rate limit exceeded'}), 429
 
-    # Migration: checking legacy admin/admin
-    if user == "admin" and password == "admin":
-        is_admin = True
+    # Auth logic
+    users = db.get_state('users', {})
+    is_admin = False
+    auth_ok = False
+
+    if not users:
+        # Initial setup fallback
+        if user == "admin" and password == "admin":
+            auth_ok = True
+            is_admin = True
     else:
-        # Here we would check real DB users
+        user_record = users.get(user)
+        if user_record and guard.verify_password(password, user_record.get('password', '')):
+            auth_ok = True
+            is_admin = user_record.get('admin', False)
+
+    if not auth_ok:
+        guard.register_failed_login(ip)
+        db.log('WARN', f"Failed login attempt from {ip} for user {user}")
         return jsonify({'ok': False, 'error': 'Invalid credentials'}), 401
+    
+    guard.register_success_login(ip)
 
     token = guard.create_session(user, ip, is_admin)
     db.log('INFO', f"User {user} logged in from {ip}")

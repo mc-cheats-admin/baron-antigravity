@@ -24,6 +24,11 @@ class SecurityGuard:
     def __init__(self):
         self._rate_limits = {}
         self._rate_lock = threading.Lock()
+        self._failed_logins = {} # IP -> count
+        self._fim_thread = None
+        self._file_hashes = {}
+        self.whitelisted_ips = [] # Loaded from config
+        self.honeypot_users = ['admin', 'root', 'administrator', 'system', 'test']
 
     def hash_password(self, password: str) -> str:
         if HAS_ARGON2:
@@ -49,7 +54,10 @@ class SecurityGuard:
             except: return False
         else:
             # Legacy SHA256 (for migration)
-            return secrets.compare_digest(hashlib.sha256(password.encode()).hexdigest(), hashed)
+            actual = hashlib.sha256(password.encode()).hexdigest()
+            # Timing attack mitigation: fake sleep
+            time.sleep(secrets.randbelow(50) / 1000.0)
+            return secrets.compare_digest(actual, hashed)
 
     def get_client_ip(self):
         """Get real client IP — with Render.com support"""
@@ -86,6 +94,55 @@ class SecurityGuard:
             hits.append(now)
             self._rate_limits[key] = hits
             return True
+
+    def register_failed_login(self, ip):
+        with self._rate_lock:
+            count = self._failed_logins.get(ip, 0) + 1
+            self._failed_logins[ip] = count
+            # Exponential tarpit: 1s, 2s, 4s, 8s...
+            delay = min(2 ** (count - 1), 30)
+            time.sleep(delay)
+            if count >= 5:
+                # Ban after 5 fails
+                self.ban_ip(ip, duration_min=60, reason="Brute-force protection")
+
+    def register_success_login(self, ip):
+        with self._rate_lock:
+            if ip in self._failed_logins:
+                del self._failed_logins[ip]
+
+    def check_whitelist(self, ip):
+        if not self.whitelisted_ips: return True
+        return ip in self.whitelisted_ips
+
+    def handle_honeypot(self, user, ip):
+        if user.lower() in self.honeypot_users:
+            self.ban_ip(ip, duration_min=1440, reason=f"Honeypot trap triggered for user {user}")
+            logger.critical(f"HONEYPOT TRIGGERED! IP {ip} tried to login as {user}. Banned for 24h.")
+            return True
+        return False
+
+    def start_fim(self, paths):
+        """File Integrity Monitoring for critical components"""
+        import os
+        for p in paths:
+            if os.path.exists(p):
+                with open(p, 'rb') as f:
+                    self._file_hashes[p] = hashlib.sha256(f.read()).hexdigest()
+
+        def fim_loop():
+            while True:
+                time.sleep(60)
+                for p, expected_hash in self._file_hashes.items():
+                    if os.path.exists(p):
+                        with open(p, 'rb') as f:
+                            actual = hashlib.sha256(f.read()).hexdigest()
+                            if actual != expected_hash:
+                                logger.critical(f"FIM ALERT: File {p} was modified! Shutting down to prevent compromise.")
+                                os._exit(1) # Hard kill
+        
+        self._fim_thread = threading.Thread(target=fim_loop, daemon=True)
+        self._fim_thread.start()
 
     def create_session(self, user, ip, is_admin=False):
         token = secrets.token_hex(48)

