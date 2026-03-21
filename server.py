@@ -605,7 +605,7 @@ def require_auth(f):
     """Require valid panel session"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get('X-Token', '')
+        token = request.headers.get('X-Token') or request.args.get('token', '')
         session = guard.validate_session_token(token)
         if not session:
             return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
@@ -618,7 +618,7 @@ def require_admin(f):
     """Require admin session"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get('X-Token', '')
+        token = request.headers.get('X-Token') or request.args.get('token', '')
         session = guard.validate_session_token(token)
         if not session:
             return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
@@ -1320,7 +1320,11 @@ def panel_build():
                 final_path = os.path.join(Config.BUILD_DIR, final_name)
                 shutil.copy2(exe_path, final_path)
                 result['compile_status'] = 'success'
-                result['download_url'] = f"/api/panel/download_build?file={final_name}"
+                
+                # Append token so browser download works
+                token = request.headers.get('X-Token', '')
+                result['download_url'] = f"/api/panel/download_build?file={final_name}&token={token}"
+                
                 state.append_log(f"Build compiled: {final_name}", 'info')
             else:
                 result['compile_status'] = 'failed'
