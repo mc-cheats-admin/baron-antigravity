@@ -113,7 +113,10 @@
         .auth-logo {
             font-size: 3rem; font-weight: 900; letter-spacing: 12px;
             background: linear-gradient(135deg, #fff 20%, var(--accent) 80%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
             margin-bottom: 5px;
         }
         .auth-sub {
@@ -150,19 +153,28 @@
         }
 
         /* -----------------------------------------------------
-           OS Workspace (Desktop)
+           OS Workspace (Desktop -> Dashboard Site)
         ----------------------------------------------------- */
         #workspace {
             position: fixed; inset: 0; z-index: 10;
             display: none; opacity: 0;
             transition: opacity 1s ease;
+            overflow-y: auto;
+            padding: 80px 20px 40px 20px;
+        }
+        .dashboard-grid {
+            max-width: 1600px; margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            align-items: start;
         }
 
         /* -----------------------------------------------------
            Dynamic Island (Top Notch)
         ----------------------------------------------------- */
         .dynamic-island {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            position: fixed; top: 15px; left: 50%; transform: translateX(-50%);
             background: #000; border-radius: 40px;
             height: 40px; width: 200px;
             display: flex; align-items: center; justify-content: center;
@@ -190,80 +202,37 @@
         }
 
         /* -----------------------------------------------------
-           Dock (Left Sidebar)
-        ----------------------------------------------------- */
-        .dock {
-            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
-            width: 80px; padding: 20px 0;
-            display: flex; flex-direction: column; align-items: center; gap: 20px;
-            z-index: 100;
-        }
-        .dock-item {
-            width: 50px; height: 50px; border-radius: 16px;
-            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; color: var(--text-muted);
-            cursor: pointer; transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-        }
-        .dock-item:hover, .dock-item.active {
-            background: var(--accent-glow); color: #fff;
-            border-color: var(--accent); transform: scale(1.1);
-        }
-        .dock-item[data-tooltip]::after {
-            content: attr(data-tooltip);
-            position: absolute; left: 70px;
-            background: rgba(0,0,0,0.8); padding: 6px 12px; border-radius: 8px;
-            font-size: 0.8rem; pointer-events: none; opacity: 0; transform: translateX(-10px);
-            transition: 0.3s; white-space: nowrap; border: 1px solid var(--glass-border);
-        }
-        .dock-item:hover::after { opacity: 1; transform: translateX(0); }
-
-        /* -----------------------------------------------------
-           Spatial Windows (Window Manager)
+           Static Windows (Dashboard Cards)
         ----------------------------------------------------- */
         .os-window {
-            position: absolute;
+            position: relative;
             background: var(--glass-bg); backdrop-filter: blur(var(--blur-heavy));
             border: 1px solid var(--glass-border); border-radius: var(--radius-md);
             box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.02) inset;
             display: flex; flex-direction: column; overflow: hidden;
-            transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s;
-            transform-origin: center center;
+            transition: transform 0.2s, box-shadow 0.2s;
             animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.9) translateY(20px); filter: blur(5px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
-        }
-        .os-window.focus {
+        .os-window:hover {
             box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 1px var(--accent) inset;
-            z-index: 500 !important;
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.95) translateY(10px); filter: blur(5px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
         }
         .win-header {
             height: 48px; background: rgba(0,0,0,0.4);
             display: flex; align-items: center; justify-content: space-between;
-            padding: 0 20px; cursor: move; border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .win-title { font-weight: 600; font-size: 0.9rem; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
-        .win-controls { display: flex; gap: 8px; }
-        .win-btn {
-            width: 14px; height: 14px; border-radius: 50%; border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; opacity: 0.5; transition: 0.2s;
-        }
-        .win-btn:hover { opacity: 1; transform: scale(1.1); }
-        .win-close { background: var(--danger); }
-        .win-max { background: var(--success); }
-        .win-min { background: var(--warning); }
+        .win-title { font-weight: 600; font-size: 0.95rem; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
         .win-body { flex: 1; overflow: auto; position: relative; padding: 20px; }
 
-        /* Window Specific Overrides */
-        #win-clients { width: 900px; height: 600px; top: 100px; left: 150px; }
-        #win-builder { width: 600px; height: 750px; top: 80px; left: 400px; display: none; }
-        #win-logs    { width: 500px; height: 800px; top: 50px; right: 50px; left: auto; display: none; }
-        #win-settings{ width: 400px; height: 500px; top: 200px; left: 300px; display: none; }
-        #win-admin   { width: 600px; height: 450px; top: 150px; left: 450px; display: none; }
-        #win-changelog{ width: 500px; height: 600px; top: 100px; left: 250px; display: none; }
+        /* Card Specific Overrides */
+        #win-clients { grid-column: 1 / -1; min-height: 400px; max-height: 600px; }
+        #win-builder { min-height: 600px; }
+        #win-logs    { min-height: 500px; max-height: 600px; }
+        #win-changelog{ min-height: 500px; max-height: 600px; overflow-y: auto; }
 
         /* -----------------------------------------------------
            Admin Center
@@ -443,42 +412,12 @@
             </div>
         </div>
 
-        <!-- Left Dock -->
-        <div class="dock glass-panel">
-            <div class="dock-item active" data-tooltip="Network" onclick="wm.focus('win-clients')">
-                <i class="fa-solid fa-network-wired"></i>
-            </div>
-            <div class="dock-item" data-tooltip="Payload Builder" onclick="wm.open('win-builder')">
-                <i class="fa-solid fa-hammer"></i>
-            </div>
-            <div class="dock-item" data-tooltip="Terminal Logs" onclick="wm.open('win-logs')">
-                <i class="fa-solid fa-terminal"></i>
-            </div>
-            <div class="dock-item" data-tooltip="OS Settings" onclick="wm.open('win-settings')">
-                <i class="fa-solid fa-sliders"></i>
-            </div>
-            <div class="dock-item" data-tooltip="God Mode Admin" onclick="wm.open('win-admin')">
-                <i class="fa-solid fa-crown" style="color: var(--accent)"></i>
-            </div>
-            <div class="dock-item" data-tooltip="Changelog" onclick="wm.open('win-changelog')">
-                <i class="fa-solid fa-receipt"></i>
-            </div>
-            <div style="flex:1"></div>
-            <div class="dock-item" style="color: var(--danger)" data-tooltip="Engage Disconnect" onclick="logout()">
-                <i class="fa-solid fa-power-off"></i>
-            </div>
-        </div>
-
-        <!-- Spatial Window: Clients -->
-        <div class="os-window focus" id="win-clients" style="z-index: 500;">
-            <div class="win-header">
-                <div class="win-title"><i class="fa-solid fa-globe"></i> Global Network</div>
-                <div class="win-controls">
-                    <button class="win-btn win-min" onclick="wm.minimize('win-clients')"></button>
-                    <button class="win-btn win-max" onclick="wm.maximize('win-clients')"></button>
-                    <button class="win-btn win-close" onclick="wm.close('win-clients')"></button>
+        <div class="dashboard-grid">
+            <!-- Card: Clients -->
+            <div class="os-window" id="win-clients">
+                <div class="win-header">
+                    <div class="win-title"><i class="fa-solid fa-globe"></i> Global Network</div>
                 </div>
-            </div>
             <div class="win-body" style="padding: 0;">
                 <table class="glass-table" id="clients-table">
                     <thead>
@@ -498,14 +437,11 @@
             </div>
         </div>
 
-        <!-- Spatial Window: Builder -->
-        <div class="os-window" id="win-builder">
-            <div class="win-header">
-                <div class="win-title"><i class="fa-solid fa-hammer"></i> Payload Engine</div>
-                <div class="win-controls">
-                    <button class="win-btn win-close" onclick="wm.close('win-builder')"></button>
+            <!-- Card: Builder -->
+            <div class="os-window" id="win-builder">
+                <div class="win-header">
+                    <div class="win-title"><i class="fa-solid fa-hammer"></i> Payload Engine</div>
                 </div>
-            </div>
             <div class="win-body">
                 <div class="form-group">
                     <label class="form-label">C2 Server URL</label>
@@ -546,14 +482,11 @@
             </div>
         </div>
 
-        <!-- Spatial Window: Logs -->
-        <div class="os-window" id="win-logs">
-            <div class="win-header">
-                <div class="win-title"><i class="fa-solid fa-terminal"></i> Sovereign Terminal</div>
-                <div class="win-controls">
-                    <button class="win-btn win-close" onclick="wm.close('win-logs')"></button>
+            <!-- Card: Logs -->
+            <div class="os-window" id="win-logs">
+                <div class="win-header">
+                    <div class="win-title"><i class="fa-solid fa-terminal"></i> Sovereign Terminal</div>
                 </div>
-            </div>
             <div class="win-body">
                 <div class="terminal-box" id="terminal">
                     <div class="log-line"><span class="log-time">[SYS]</span> <span class="log-sys">Baron C2 Initialized. Secure Connection Established.</span></div>
@@ -561,15 +494,13 @@
             </div>
         </div>
 
-        <!-- Spatial Window: Settings -->
-        <div class="os-window" id="win-settings">
-            <div class="win-header">
-                <div class="win-title"><i class="fa-solid fa-sliders"></i> OS Theming</div>
-                <div class="win-controls">
-                    <button class="win-btn win-close" onclick="wm.close('win-settings')"></button>
+            <!-- Card: Settings -->
+            <div class="os-window" id="win-settings">
+                <div class="win-header">
+                    <div class="win-title"><i class="fa-solid fa-sliders"></i> OS Theming & System</div>
                 </div>
-            </div>
-            <div class="win-body">
+                <div class="win-body">
+                    <button class="btn-primary" style="background: var(--danger); margin-bottom: 20px;" onclick="logout()"><i class="fa-solid fa-power-off"></i> Disconnect / Logout</button>
                 <p style="margin-bottom: 20px; color: var(--text-muted);">Select Interface Resonance Matrix:</p>
                 <div class="theme-grid">
                     <div class="theme-btn gold" onclick="setTheme('gold')">
@@ -591,14 +522,11 @@
             </div>
         </div>
 
-        <!-- Spatial Window: Admin Center -->
-        <div class="os-window" id="win-admin">
-            <div class="win-header">
-                <div class="win-title"><i class="fa-solid fa-crown" style="color: var(--accent)"></i> God Mode Admin Center</div>
-                <div class="win-controls">
-                    <button class="win-btn win-close" onclick="wm.close('win-admin')"></button>
+            <!-- Card: Admin Center -->
+            <div class="os-window" id="win-admin">
+                <div class="win-header">
+                    <div class="win-title"><i class="fa-solid fa-crown" style="color: var(--accent)"></i> God Mode Admin Center</div>
                 </div>
-            </div>
             <div class="win-body">
                 <h4 style="margin-bottom: 20px; color: var(--text-muted); text-transform: uppercase;">Server Control</h4>
                 <div class="admin-grid">
@@ -626,14 +554,11 @@
             </div>
         </div>
 
-        <!-- Spatial Window: Changelog -->
-        <div class="os-window" id="win-changelog">
-            <div class="win-header">
-                <div class="win-title"><i class="fa-solid fa-receipt"></i> System Changelog</div>
-                <div class="win-controls">
-                    <button class="win-btn win-close" onclick="wm.close('win-changelog')"></button>
+            <!-- Card: Changelog -->
+            <div class="os-window" id="win-changelog">
+                <div class="win-header">
+                    <div class="win-title"><i class="fa-solid fa-receipt"></i> System Changelog</div>
                 </div>
-            </div>
             <div class="win-body">
                 <div class="cl-item">
                     <div class="cl-version">v3.0 Sovereign (God Mode)</div>
@@ -658,6 +583,8 @@
                 </div>
             </div>
         </div>
+
+        </div> <!-- End Dashboard Grid -->
 
         <!-- Custom Context Menu for Clients -->
         <div id="context-menu">
@@ -689,111 +616,19 @@
 
     </div>
 
-    <!-- ----------------------------------------------------------------------------------
-         CORE JAVASCRIPT ENGINE (Three.js, Socket.IO, WindowManager)
-    ----------------------------------------------------------------------------------- -->
+    <!-- ---------------------------------------------------
+         JAVASCRIPT ENGINE
+    --------------------------------------------------- -->
     <script>
-        // --- 1. State & Globals ---
-        let token = localStorage.getItem('baron_token');
+        let token = localStorage.getItem('baron_token') || null;
         let socket = null;
         let selectedClient = null;
 
-        // --- 2. Window Manager (Spatial UI) ---
-        class WindowManager {
-            constructor() {
-                this.windows = document.querySelectorAll('.os-window');
-                this.zIndex = 500;
-                
-                // Init dragging
-                this.windows.forEach(win => {
-                    const header = win.querySelector('.win-header');
-                    win.addEventListener('mousedown', () => this.focus(win.id));
-                    
-                    let isDragging = false, startX, startY, initX, initY;
-                    
-                    header.addEventListener('mousedown', e => {
-                        if(e.target.classList.contains('win-btn')) return;
-                        isDragging = true;
-                        startX = e.clientX; startY = e.clientY;
-                        const rect = win.getBoundingClientRect();
-                        initX = rect.left; initY = rect.top;
-                        win.style.transition = 'none'; // Disable transition while dragging
-                    });
-                    
-                    document.addEventListener('mousemove', e => {
-                        if(!isDragging) return;
-                        const dx = e.clientX - startX;
-                        const dy = e.clientY - startY;
-                        win.style.left = `${initX + dx}px`;
-                        win.style.top = `${initY + dy}px`;
-                    });
-                    
-                    document.addEventListener('mouseup', () => {
-                        if(isDragging) {
-                            isDragging = false;
-                            win.style.transition = 'transform 0.2s, opacity 0.2s, box-shadow 0.2s';
-                        }
-                    });
-                });
-            }
-            
-            focus(id) {
-                this.windows.forEach(w => w.classList.remove('focus'));
-                const win = document.getElementById(id);
-                if(win) {
-                    win.style.display = 'flex';
-                    win.classList.add('focus');
-                    win.style.zIndex = ++this.zIndex;
-                }
-                
-                // Update Dock Active
-                document.querySelectorAll('.dock-item').forEach(i => i.classList.remove('active'));
-                const mapper = { 'win-clients':0, 'win-builder':1, 'win-logs':2, 'win-settings':3, 'win-admin':4, 'win-changelog':5 };
-                if(mapper[id]!==undefined) {
-                    document.querySelectorAll('.dock-item')[mapper[id]].classList.add('active');
-                }
-            }
-            
-            open(id) {
-                const win = document.getElementById(id);
-                if(win) {
-                    win.style.display = 'flex';
-                    this.focus(id);
-                }
-            }
-            
-            close(id) {
-                const win = document.getElementById(id);
-                if(win) win.style.display = 'none';
-            }
-            
-            maximize(id) {
-                const win = document.getElementById(id);
-                if(!win) return;
-                if(win.dataset.max == "1") {
-                    win.style.width = win.dataset.ow;
-                    win.style.height = win.dataset.oh;
-                    win.style.top = win.dataset.oy;
-                    win.style.left = win.dataset.ox;
-                    win.dataset.max = "0";
-                } else {
-                    win.dataset.ow = win.style.width || getComputedStyle(win).width;
-                    win.dataset.oh = win.style.height || getComputedStyle(win).height;
-                    win.dataset.ox = win.style.left || getComputedStyle(win).left;
-                    win.dataset.oy = win.style.top || getComputedStyle(win).top;
-                    win.style.width = '100vw'; win.style.height = '100vh';
-                    win.style.top = '0'; win.style.left = '0';
-                    win.dataset.max = "1";
-                }
-            }
-            
-            minimize(id) { this.close(id); }
-        }
-        const wm = new WindowManager();
-
-        // --- 3. Context Menu Logic ---
+        // Context menu handling
         const ctxMenu = document.getElementById('context-menu');
-        document.addEventListener('click', () => { ctxMenu.classList.remove('active'); });
+        document.addEventListener('click', e => {
+            if(!ctxMenu.contains(e.target)) ctxMenu.classList.remove('active');
+        });
         
         function attachContextMenu() {
             const rows = document.querySelectorAll('#clients-body tr');
@@ -1099,9 +934,13 @@
                     btn.innerText = "DOWNLOAD PAYLOAD";
                     btn.classList.add('status-online');
                     setTimeout(() => { btn.classList.remove('status-online'); btn.innerText="Compile Binary"; btn.disabled=false; }, 3000);
-                    // Trigger download
-                    window.location = d.source.download_url;
-                    logTerminal(`Payload generated successfully: ${d.source.name}`, 'succ');
+                    if(d.download_url) {
+                        window.location = d.download_url;
+                        logTerminal(`Payload generated successfully: ${d.name}`, 'succ');
+                    } else if(d.source) {
+                        // fallback if no compile occurred
+                        logTerminal(`Compilation failed, no compiler found! Cannot download exe.`, 'err');
+                    }
                 } else {
                     btn.innerText = "ERROR - CHECK LOGS";
                     btn.disabled = false;
