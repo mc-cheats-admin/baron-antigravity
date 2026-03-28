@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 BARON C2 v4.0 — Full Server
 Academic Pentesting Framework
@@ -1601,8 +1601,17 @@ def generate_agent_source(bc):
         "        static string _processName;\n"
         "        static string _commKeyHex;\n"
         "        static int _beaconInterval = " + str(bc['beacon']) + ";\n"
-        "        static bool _debug = " + ('true' if bc['debug'] else 'false') + ";\n"
-        "        static void Log(string msg) { if(_debug) { Console.WriteLine(\"[\" + DateTime.Now.ToString(\"HH:mm:ss\") + \"] \" + msg); } }\n"
+        "        static bool _debug = " + ('true' if (bc['debug'] or not bc['hidden']) else 'false') + ";\n"
+        "        static void Log(string msg) {\n"
+        "            if(_debug) {\n"
+        "                try {\n"
+        "                    Console.ForegroundColor = ConsoleColor.DarkGray;\n"
+        "                    Console.Write(\"[\" + DateTime.Now.ToString(\"HH:mm:ss\") + \"] \");\n"
+        "                    Console.ResetColor();\n"
+        "                    Console.WriteLine(msg);\n"
+        "                } catch {}\n"
+        "            }\n"
+        "        }\n"
         "\n"
         "        // ---- State ----\n"
         "        static bool _running = true;\n"
@@ -1693,10 +1702,16 @@ def generate_agent_source(bc):
         "                }\n"
         "            } catch (Exception ex) {\n"
         "                if (_debug) {\n"
+        '                    Console.ForegroundColor = ConsoleColor.Red;\n'
         '                    Console.WriteLine("FATAL: " + ex.ToString());\n'
+        '                    Console.ResetColor();\n'
         '                    Console.WriteLine("Press Enter to exit...");\n'
         "                    try { Console.ReadLine(); } catch {}\n"
         "                }\n"
+        "            }\n"
+        "            if (_debug) {\n"
+        '                Console.WriteLine("\\n[Agent exited. Press Enter to close]");\n'
+        "                try { Console.ReadLine(); } catch {}\n"
         "            }\n"
         "        }\n"
         "\n"
@@ -1848,6 +1863,7 @@ def generate_agent_source(bc):
         "        }\n"
         "\n"
         "        static void Res(string type, string data) {\n"
+        "            Log(\"[RESULT] \" + type + \": \" + (data.Length > 200 ? data.Substring(0, 200) + \"...\" : data));\n"
         "            string json = string.Format(\n"
         '                "{{\\\"id\\\":\\\"{0}\\\",\\\"type\\\":\\\"{1}\\\",\\\"data\\\":\\\"{2}\\\"}}",\n'
         "                Esc(_clientId), Esc(type), Esc(data));\n"

