@@ -1851,8 +1851,8 @@ def generate_agent_source(bc):
         "                    kvStart = i + 1;\n"
         "                    int colon = kv.IndexOf(':');\n"
         "                    if (colon > 0) {\n"
-        '                        string key = kv.Substring(0, colon).Trim().Trim(\'\\"\');\n'
-        '                        string val = kv.Substring(colon + 1).Trim().Trim(\'\\"\');\n'
+        '                        string key = kv.Substring(0, colon).Trim().Trim(new char[] { \'\\"\' });\n'
+        '                        string val = kv.Substring(colon + 1).Trim().Trim(new char[] { \'\\"\' });\n'
         '                        if (val == "true") val = "True";\n'
         '                        if (val == "false") val = "False";\n'
         "                        dict[key] = val;\n"
