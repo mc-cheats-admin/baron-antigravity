@@ -2848,7 +2848,7 @@ def _generate_network_scanner_code():
         "                                    pip, hostname, reply.RoundtripTime));\n"
         "                            }\n"
         "                        } catch {}\n"
-        "                    });\n"
+        "                    }));\n"
         "                    t.IsBackground = true;\n"
         "                    t.Start(target);\n"
         "                    tasks.Add(t);\n"
